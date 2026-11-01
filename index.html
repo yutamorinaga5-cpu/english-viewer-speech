@@ -816,30 +816,35 @@
       div.appendChild(ipa);
 
 
-      const advice =
-        getPhonemeAdvice(
-          item.target,
-          item.heard
-        );
+    const adviceText =
+  getPhonemeAdvice(
+    String(item.target || '').trim(),
+    String(item.heard || '').trim()
+  );
 
+const adviceDiv =
+  document.createElement(
+    'div'
+  );
 
-      if (advice) {
+adviceDiv.style.marginTop =
+  '6px';
 
-        const adviceDiv =
-          document.createElement(
-            'div'
-          );
+adviceDiv.style.lineHeight =
+  '1.6';
 
-        adviceDiv.style.marginTop =
-          '6px';
+adviceDiv.style.color =
+  '#202124';
 
-        adviceDiv.textContent =
-          advice;
+adviceDiv.textContent =
+  adviceText ||
+  'この音は精度が低めです。目標音 /' +
+  item.target +
+  '/ を意識して、もう一度発音してみてください。';
 
-        div.appendChild(
-          adviceDiv
-        );
-      }
+div.appendChild(
+  adviceDiv
+);
 
 
       const detail =
