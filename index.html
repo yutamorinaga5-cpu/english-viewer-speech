@@ -10,6 +10,8 @@
 
   <title>English Pronunciation</title>
 
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+
   <style>
     body {
       margin: 0;
@@ -39,7 +41,7 @@
 
     textarea {
       width: 100%;
-      min-height: 95px;
+      min-height: 90px;
       box-sizing: border-box;
       border: 1px solid #dadce0;
       border-radius: 12px;
@@ -56,22 +58,20 @@
       font-size: 1rem;
       font-weight: bold;
       margin-top: 10px;
-      cursor: pointer;
+    }
+
+    #speakButton {
+      background: #e8f0fe;
+      color: #1a73e8;
     }
 
     #recordButton {
-      color: white;
       background: #c5221f;
-    }
-
-    #stopButton {
       color: white;
-      background: #5f6368;
     }
 
     button:disabled {
       opacity: 0.45;
-      cursor: default;
     }
 
     #status {
@@ -83,11 +83,45 @@
     }
 
     #result {
-      margin-top: 12px;
       display: none;
-      padding: 12px;
-      border-radius: 10px;
-      background: #e6f4ea;
+      margin-top: 14px;
+    }
+
+    .score {
+      font-size: 2.2rem;
+      font-weight: 850;
+      margin-bottom: 8px;
+    }
+
+    .history {
+      color: #5f6368;
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+    }
+
+    .problem {
+      padding: 12px 0;
+      border-top: 1px solid #dadce0;
+    }
+
+    .problem:first-child {
+      border-top: 0;
+    }
+
+    .word {
+      font-weight: 800;
+    }
+
+    .ipa {
+      margin-top: 4px;
+      color: #b06000;
+      font-weight: 700;
+    }
+
+    .small {
+      color: #5f6368;
+      font-size: 0.9rem;
+      margin-top: 4px;
     }
   </style>
 </head>
@@ -98,34 +132,41 @@
 
   <div class="card">
 
-    <h1>発音録音テスト</h1>
-
-    <div>
-      練習する英文
-    </div>
+    <h1>米語 発音チェック</h1>
 
     <textarea id="englishText">I didn't see that coming.</textarea>
 
     <button
-      id="recordButton"
-      onclick="startRecording()"
+      id="speakButton"
+      onclick="speakEnglish()"
     >
-      🎤 録音開始
+      🔊 米語で聞く
     </button>
 
     <button
-      id="stopButton"
-      onclick="stopRecording()"
-      disabled
+      id="recordButton"
+      onclick="assessPronunciation()"
     >
-      ■ 録音終了
+      🎤 発音する
     </button>
 
     <div id="status">
-      録音開始を押してください。
+      発音するを押してください。
     </div>
 
-    <div id="result"></div>
+  </div>
+
+
+  <div
+    id="result"
+    class="card"
+  >
+
+    <div id="score" class="score"></div>
+
+    <div id="history" class="history"></div>
+
+    <div id="problems"></div>
 
   </div>
 
@@ -134,496 +175,684 @@
 
 <script>
 
-  let audioContext = null;
-  let mediaStream = null;
-  let sourceNode = null;
-  let processorNode = null;
+  /*
+   * ↓↓↓ ここだけ変更 ↓↓↓
+   *
+   * Apps Script のウェブアプリURLを貼る
+   */
+  const APPS_SCRIPT_URL =
+    'https://script.google.com/macros/s/AKfycbwwwNsySQEF2s4LW8ow5QEEsDXC2tJXNLk8jEDWaVS1JC9pYqYdzF29QjuxdXeJFRmkjQ/exec';
 
-  let recordedChunks = [];
-  let inputSampleRate = 48000;
+
+  let attemptScores = [];
 
 
-  async function startRecording() {
+  function speakEnglish() {
 
-    const recordButton =
+    const text =
+      document
+        .getElementById('englishText')
+        .value
+        .trim();
+
+    if (!text) {
+      return;
+    }
+
+    speechSynthesis.cancel();
+
+    const utterance =
+      new SpeechSynthesisUtterance(text);
+
+    utterance.lang = 'en-US';
+    utterance.rate = 1.0;
+
+    speechSynthesis.speak(utterance);
+  }
+
+
+  async function assessPronunciation() {
+
+    const text =
+      document
+        .getElementById('englishText')
+        .value
+        .trim();
+
+    if (!text) {
+      return;
+    }
+
+
+    const button =
       document.getElementById('recordButton');
 
-    const stopButton =
-      document.getElementById('stopButton');
-
-    const status =
-      document.getElementById('status');
-
-    const result =
-      document.getElementById('result');
+    button.disabled = true;
 
 
-    result.style.display = 'none';
-    result.textContent = '';
-
-    recordedChunks = [];
+    setStatus(
+      'Azure Speechに接続しています…'
+    );
 
 
     try {
 
-      status.textContent =
-        'マイクを準備しています…';
+      const auth =
+        await getSpeechToken();
 
 
-      mediaStream =
-        await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
+      if (
+        typeof SpeechSDK === 'undefined'
+      ) {
+
+        throw new Error(
+          'Azure Speech SDKを読み込めませんでした。'
+        );
+      }
+
+
+      const speechConfig =
+        SpeechSDK.SpeechConfig
+          .fromAuthorizationToken(
+            auth.token,
+            auth.region
+          );
+
+
+      speechConfig.speechRecognitionLanguage =
+        'en-US';
+
+
+      const audioConfig =
+        SpeechSDK.AudioConfig
+          .fromDefaultMicrophoneInput();
+
+
+      const recognizer =
+        new SpeechSDK.SpeechRecognizer(
+          speechConfig,
+          audioConfig
+        );
+
+
+      const paJson =
+        JSON.stringify({
+
+          referenceText: text,
+
+          gradingSystem:
+            'HundredMark',
+
+          granularity:
+            'Phoneme',
+
+          phonemeAlphabet:
+            'IPA',
+
+          nBestPhonemeCount:
+            5,
+
+          enableMiscue:
+            true
         });
 
 
-      audioContext =
-        new (
-          window.AudioContext ||
-          window.webkitAudioContext
-        )();
+      const paConfig =
+        SpeechSDK
+          .PronunciationAssessmentConfig
+          .fromJSON(paJson);
 
 
-      inputSampleRate =
-        audioContext.sampleRate;
+      paConfig.applyTo(
+        recognizer
+      );
 
 
-      sourceNode =
-        audioContext.createMediaStreamSource(
-          mediaStream
-        );
+      setStatus(
+        '🎤 発音してください。読み終わったら少し待ってください。'
+      );
 
 
-      processorNode =
-        audioContext.createScriptProcessor(
-          4096,
-          1,
-          1
-        );
+      recognizer.recognizeOnceAsync(
+
+        function(result) {
+
+          button.disabled = false;
+
+          recognizer.close();
 
 
-      processorNode.onaudioprocess =
-        function(event) {
+          if (
+            result.reason !==
+            SpeechSDK.ResultReason.RecognizedSpeech
+          ) {
 
-          const input =
-            event.inputBuffer
-              .getChannelData(0);
+            setStatus(
+              '音声を認識できませんでした。もう一度試してください。'
+            );
 
-          recordedChunks.push(
-            new Float32Array(input)
+            return;
+          }
+
+
+          const assessment =
+            SpeechSDK
+              .PronunciationAssessmentResult
+              .fromResult(result);
+
+
+          const score =
+            Math.round(
+              assessment.pronunciationScore || 0
+            );
+
+
+          const rawJson =
+            result.properties.getProperty(
+              SpeechSDK
+                .PropertyId
+                .SpeechServiceResponse_JsonResult
+            );
+
+
+          let detail = {};
+
+          try {
+            detail =
+              JSON.parse(rawJson);
+          } catch (e) {
+            detail = {};
+          }
+
+
+          attemptScores.push(score);
+
+
+          renderResult(
+            score,
+            detail
           );
-        };
 
 
-      sourceNode.connect(
-        processorNode
+          setStatus(
+            '採点完了。もう一度発音すると再採点します。'
+          );
+        },
+
+
+        function(error) {
+
+          button.disabled = false;
+
+          recognizer.close();
+
+          setStatus(
+            'エラー：' +
+            String(error)
+          );
+        }
       );
-
-
-      processorNode.connect(
-        audioContext.destination
-      );
-
-
-      recordButton.disabled = true;
-      stopButton.disabled = false;
-
-
-      status.textContent =
-        '🎤 録音中です。\n英文を普通の速度で読んでください。';
 
 
     } catch (error) {
 
-      status.textContent =
-        '❌ マイクを開始できませんでした。\n' +
-        error.name +
-        ': ' +
-        error.message;
-    }
-  }
+      button.disabled = false;
 
-
-  async function stopRecording() {
-
-    const recordButton =
-      document.getElementById('recordButton');
-
-    const stopButton =
-      document.getElementById('stopButton');
-
-    const status =
-      document.getElementById('status');
-
-    const result =
-      document.getElementById('result');
-
-
-    stopButton.disabled = true;
-
-
-    if (processorNode) {
-
-      processorNode.disconnect();
-      processorNode = null;
-    }
-
-
-    if (sourceNode) {
-
-      sourceNode.disconnect();
-      sourceNode = null;
-    }
-
-
-    if (mediaStream) {
-
-      mediaStream
-        .getTracks()
-        .forEach(function(track) {
-          track.stop();
-        });
-
-      mediaStream = null;
-    }
-
-
-    if (audioContext) {
-
-      await audioContext.close();
-      audioContext = null;
-    }
-
-
-    status.textContent =
-      '録音データを変換しています…';
-
-
-    const merged =
-      mergeBuffers(
-        recordedChunks
-      );
-
-
-    const resampled =
-      resampleTo16k(
-        merged,
-        inputSampleRate
-      );
-
-
-    const wavBlob =
-      encodeWav16k(
-        resampled
-      );
-
-
-    recordButton.disabled = false;
-
-
-    const seconds =
-      resampled.length / 16000;
-
-
-    result.style.display =
-      'block';
-
-    result.textContent =
-      '✅ 録音成功\n' +
-      '録音時間：約 ' +
-      seconds.toFixed(1) +
-      ' 秒\n' +
-      '16kHz WAVへの変換も成功しました。';
-
-
-    status.textContent =
-      '録音テスト完了';
-  }
-
-
-  function mergeBuffers(chunks) {
-
-    let totalLength = 0;
-
-
-    chunks.forEach(function(chunk) {
-      totalLength += chunk.length;
-    });
-
-
-    const result =
-      new Float32Array(
-        totalLength
-      );
-
-
-    let offset = 0;
-
-
-    chunks.forEach(function(chunk) {
-
-      result.set(
-        chunk,
-        offset
-      );
-
-      offset += chunk.length;
-    });
-
-
-    return result;
-  }
-
-
-  function resampleTo16k(
-    input,
-    originalRate
-  ) {
-
-    const targetRate =
-      16000;
-
-
-    if (
-      originalRate === targetRate
-    ) {
-      return input;
-    }
-
-
-    const ratio =
-      originalRate /
-      targetRate;
-
-
-    const newLength =
-      Math.round(
-        input.length /
-        ratio
-      );
-
-
-    const output =
-      new Float32Array(
-        newLength
-      );
-
-
-    for (
-      let i = 0;
-      i < newLength;
-      i++
-    ) {
-
-      const position =
-        i * ratio;
-
-      const index =
-        Math.floor(position);
-
-      const fraction =
-        position - index;
-
-
-      const sample1 =
-        input[index] || 0;
-
-
-      const sample2 =
-        input[
-          Math.min(
-            index + 1,
-            input.length - 1
-          )
-        ] || 0;
-
-
-      output[i] =
-        sample1 +
+      setStatus(
+        'エラー：' +
         (
-          sample2 -
-          sample1
-        ) *
-        fraction;
+          error &&
+          error.message
+            ? error.message
+            : String(error)
+        )
+      );
     }
-
-
-    return output;
   }
 
 
-  function encodeWav16k(samples) {
+  function getSpeechToken() {
 
-    const buffer =
-      new ArrayBuffer(
-        44 +
-        samples.length * 2
-      );
+    return new Promise(
+      function(resolve, reject) {
 
-
-    const view =
-      new DataView(buffer);
-
-
-    writeString(
-      view,
-      0,
-      'RIFF'
-    );
-
-
-    view.setUint32(
-      4,
-      36 +
-      samples.length * 2,
-      true
-    );
-
-
-    writeString(
-      view,
-      8,
-      'WAVE'
-    );
-
-
-    writeString(
-      view,
-      12,
-      'fmt '
-    );
-
-
-    view.setUint32(
-      16,
-      16,
-      true
-    );
-
-
-    view.setUint16(
-      20,
-      1,
-      true
-    );
-
-
-    view.setUint16(
-      22,
-      1,
-      true
-    );
-
-
-    view.setUint32(
-      24,
-      16000,
-      true
-    );
-
-
-    view.setUint32(
-      28,
-      16000 * 2,
-      true
-    );
-
-
-    view.setUint16(
-      32,
-      2,
-      true
-    );
-
-
-    view.setUint16(
-      34,
-      16,
-      true
-    );
-
-
-    writeString(
-      view,
-      36,
-      'data'
-    );
-
-
-    view.setUint32(
-      40,
-      samples.length * 2,
-      true
-    );
-
-
-    let offset =
-      44;
-
-
-    for (
-      let i = 0;
-      i < samples.length;
-      i++
-    ) {
-
-      let sample =
-        Math.max(
-          -1,
-          Math.min(
-            1,
-            samples[i]
+        if (
+          !APPS_SCRIPT_URL ||
+          APPS_SCRIPT_URL.includes(
+            'PASTE_APPS_SCRIPT'
           )
+        ) {
+
+          reject(
+            new Error(
+              'Apps Script URLが未設定です。'
+            )
+          );
+
+          return;
+        }
+
+
+        const callbackName =
+          'speechTokenCallback_' +
+          Date.now();
+
+
+        const script =
+          document.createElement(
+            'script'
+          );
+
+
+        const timeout =
+          setTimeout(
+            function() {
+
+              cleanup();
+
+              reject(
+                new Error(
+                  'Speechトークン取得がタイムアウトしました。'
+                )
+              );
+
+            },
+            15000
+          );
+
+
+        window[callbackName] =
+          function(data) {
+
+            clearTimeout(timeout);
+
+            cleanup();
+
+            if (
+              !data ||
+              !data.token ||
+              !data.region
+            ) {
+
+              reject(
+                new Error(
+                  'Speechトークンを取得できませんでした。'
+                )
+              );
+
+              return;
+            }
+
+
+            resolve(data);
+          };
+
+
+        function cleanup() {
+
+          if (
+            script.parentNode
+          ) {
+            script.parentNode
+              .removeChild(script);
+          }
+
+          try {
+            delete window[
+              callbackName
+            ];
+          } catch (e) {}
+        }
+
+
+        script.onerror =
+          function() {
+
+            clearTimeout(timeout);
+
+            cleanup();
+
+            reject(
+              new Error(
+                'Apps Scriptに接続できませんでした。'
+              )
+            );
+          };
+
+
+        script.src =
+          APPS_SCRIPT_URL +
+          '?action=speechToken' +
+          '&callback=' +
+          encodeURIComponent(
+            callbackName
+          );
+
+
+        document.body.appendChild(
+          script
         );
-
-
-      sample =
-        sample < 0
-          ? sample * 0x8000
-          : sample * 0x7FFF;
-
-
-      view.setInt16(
-        offset,
-        sample,
-        true
-      );
-
-
-      offset += 2;
-    }
-
-
-    return new Blob(
-      [view],
-      {
-        type:
-          'audio/wav'
       }
     );
   }
 
 
-  function writeString(
-    view,
-    offset,
-    text
+  function renderResult(
+    score,
+    detail
   ) {
 
-    for (
-      let i = 0;
-      i < text.length;
-      i++
+    document
+      .getElementById('result')
+      .style.display =
+      'block';
+
+
+    document
+      .getElementById('score')
+      .textContent =
+      score + '点';
+
+
+    const historyText =
+      attemptScores
+        .map(
+          function(value, index) {
+
+            if (index === 0) {
+
+              return (
+                '1回目 ' +
+                value +
+                '点'
+              );
+            }
+
+
+            const diff =
+              value -
+              attemptScores[
+                index - 1
+              ];
+
+
+            let arrow = '';
+
+            if (diff > 0) {
+              arrow =
+                ' ↑' + diff;
+            }
+
+            if (diff < 0) {
+              arrow =
+                ' ↓' +
+                Math.abs(diff);
+            }
+
+
+            return (
+              (index + 1) +
+              '回目 ' +
+              value +
+              '点' +
+              arrow
+            );
+          }
+        )
+        .join('　');
+
+
+    document
+      .getElementById('history')
+      .textContent =
+      historyText;
+
+
+    renderPhonemeProblems(
+      detail
+    );
+  }
+
+
+  function renderPhonemeProblems(
+    data
+  ) {
+
+    const root =
+      document.getElementById(
+        'problems'
+      );
+
+
+    root.innerHTML = '';
+
+
+    const candidates = [];
+
+
+    try {
+
+      const words =
+        data
+          .NBest[0]
+          .Words || [];
+
+
+      words.forEach(
+        function(wordData) {
+
+          const phonemes =
+            wordData.Phonemes || [];
+
+
+          phonemes.forEach(
+            function(phoneme) {
+
+              const pa =
+                phoneme
+                  .PronunciationAssessment
+                || {};
+
+
+              const accuracy =
+                Number(
+                  pa.AccuracyScore
+                );
+
+
+              if (
+                !Number.isFinite(
+                  accuracy
+                )
+              ) {
+                return;
+              }
+
+
+              const target =
+                phoneme.Phoneme || '';
+
+
+              const nbest =
+                phoneme
+                  .NBestPhonemes
+                || [];
+
+
+              let heard = '';
+
+
+              if (
+                nbest.length > 0 &&
+                nbest[0].Phoneme
+              ) {
+
+                heard =
+                  nbest[0].Phoneme;
+              }
+
+
+              candidates.push({
+
+                word:
+                  wordData.Word || '',
+
+                target:
+                  target,
+
+                heard:
+                  heard,
+
+                accuracy:
+                  accuracy
+              });
+            }
+          );
+        }
+      );
+
+    } catch (error) {}
+
+
+    candidates.sort(
+      function(a, b) {
+
+        return (
+          a.accuracy -
+          b.accuracy
+        );
+      }
+    );
+
+
+    const problems =
+      candidates
+        .filter(
+          function(item) {
+
+            return (
+              item.accuracy < 80
+            );
+          }
+        )
+        .slice(0, 3);
+
+
+    if (
+      problems.length === 0
     ) {
 
-      view.setUint8(
-        offset + i,
-        text.charCodeAt(i)
-      );
+      root.textContent =
+        '大きな音素レベルの問題は検出されませんでした。';
+
+      return;
     }
+
+
+    const title =
+      document.createElement(
+        'h3'
+      );
+
+    title.textContent =
+      '特に確認したい発音';
+
+    root.appendChild(title);
+
+
+    problems.forEach(
+      function(item) {
+
+        const div =
+          document.createElement(
+            'div'
+          );
+
+        div.className =
+          'problem';
+
+
+        const word =
+          document.createElement(
+            'div'
+          );
+
+        word.className =
+          'word';
+
+        word.textContent =
+          item.word;
+
+
+        div.appendChild(word);
+
+
+        const ipa =
+          document.createElement(
+            'div'
+          );
+
+        ipa.className =
+          'ipa';
+
+
+        if (
+          item.heard &&
+          item.heard !==
+          item.target
+        ) {
+
+          ipa.textContent =
+            '目標 /' +
+            item.target +
+            '/ → 今回は /' +
+            item.heard +
+            '/ に近い';
+
+        } else {
+
+          ipa.textContent =
+            '目標 /' +
+            item.target +
+            '/';
+        }
+
+
+        div.appendChild(ipa);
+
+
+        const detail =
+          document.createElement(
+            'div'
+          );
+
+        detail.className =
+          'small';
+
+        detail.textContent =
+          'この音素の精度：' +
+          Math.round(
+            item.accuracy
+          );
+
+
+        div.appendChild(detail);
+
+
+        root.appendChild(div);
+      }
+    );
+  }
+
+
+  function setStatus(text) {
+
+    document
+      .getElementById(
+        'status'
+      )
+      .textContent =
+      text;
   }
 
 </script>
