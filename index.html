@@ -395,6 +395,7 @@
           return;
         }
 
+
         const section =
           document
             .createElement(
@@ -878,7 +879,7 @@
   }
 
 
-    async function assessPronunciation() {
+  async function assessPronunciation() {
 
     const text =
       document
@@ -887,19 +888,22 @@
         .trim();
 
     if (!text) {
-      setStatus('英文を入力してください。');
       return;
     }
 
-    if (text !== lastReferenceText) {
+    if (
+      text !==
+      lastReferenceText
+    ) {
+
       attemptScores = [];
-      lastReferenceText = text;
+
+      lastReferenceText =
+        text;
     }
 
     const button =
-      document.getElementById(
-        'recordButton'
-      );
+      document.getElementById('recordButton');
 
     button.disabled = true;
 
@@ -907,64 +911,72 @@
       'Azure Speechに接続しています…'
     );
 
-    let recognizer = null;
-    let audioConfig = null;
-
     try {
 
       const auth =
-        await getJsonp(
-          'speechToken',
-          {}
+        await getSpeechToken();
+
+      if (
+        typeof SpeechSDK === 'undefined'
+      ) {
+
+        throw new Error(
+          'Azure Speech SDKを読み込めませんでした。'
         );
+      }
 
       const speechConfig =
-        SpeechSDK
-          .SpeechConfig
+        SpeechSDK.SpeechConfig
           .fromAuthorizationToken(
             auth.token,
             auth.region
           );
 
-      speechConfig
-        .speechRecognitionLanguage =
+      speechConfig.speechRecognitionLanguage =
         'en-US';
 
-      audioConfig =
-        SpeechSDK
-          .AudioConfig
+      const audioConfig =
+        SpeechSDK.AudioConfig
           .fromDefaultMicrophoneInput();
 
-      recognizer =
-        new SpeechSDK
-          .SpeechRecognizer(
-            speechConfig,
-            audioConfig
-          );
+      const recognizer =
+        new SpeechSDK.SpeechRecognizer(
+          speechConfig,
+          audioConfig
+        );
 
       const paJson =
         JSON.stringify({
+
           referenceText: text,
-          gradingSystem: 'HundredMark',
-          granularity: 'Phoneme',
-          phonemeAlphabet: 'IPA',
-          nBestPhonemeCount: 5,
-          enableMiscue: true
+
+          gradingSystem:
+            'HundredMark',
+
+          granularity:
+            'Phoneme',
+
+          phonemeAlphabet:
+            'IPA',
+
+          nBestPhonemeCount:
+            5,
+
+          enableMiscue:
+            true
         });
 
       const paConfig =
         SpeechSDK
           .PronunciationAssessmentConfig
-          .fromJSON(
-            paJson
-          );
+          .fromJSON(paJson);
 
       paConfig.applyTo(
         recognizer
       );
 
       setStatus(
-        '🎤 発音してください。'
+        '🎤 発音してください。読み終わったら少し待ってください。'
       );
 
       recognizer.recognizeOnceAsync(
@@ -972,6 +984,30 @@
         function(result) {
 
           button.disabled = false;
+
+          recognizer.close();
+
+          if (
+            result.reason !==
+            SpeechSDK.ResultReason.RecognizedSpeech
+          ) {
+
+            setStatus(
+              '音声を認識できませんでした。もう一度試してください。'
+            );
+
+            return;
+          }
+
+          const assessment =
+            SpeechSDK
+              .PronunciationAssessmentResult
+              .fromResult(result);
+
+          const score =
+            Math.round(
+              assessment.pronunciationScore || 0
+            );
 
           const rawJson =
             result.properties.getProperty(
@@ -984,87 +1020,17 @@
 
           try {
             detail =
-              JSON.parse(
-                rawJson
-              );
+              JSON.parse(rawJson);
           } catch (e) {
             detail = {};
           }
 
-          if (
-            result.reason !==
-            SpeechSDK
-              .ResultReason
-              .RecognizedSpeech
-          ) {
-
-            closeSpeechObjects();
-
-            setStatus(
-              '音声を認識できませんでした。もう一度発音してください。'
-            );
-
-            return;
-          }
-
-          const assessment =
-            SpeechSDK
-              .PronunciationAssessmentResult
-              .fromResult(
-                result
-              );
-
-          let score =
-            Number(
-              assessment
-                .pronunciationScore
-            );
-
-          if (
-            !Number.isFinite(score) ||
-            score === 0
-          ) {
-
-            try {
-
-              const fallbackScore =
-                detail
-                  .NBest[0]
-                  .PronunciationAssessment
-                  .PronScore;
-
-              if (
-                Number.isFinite(
-                  Number(
-                    fallbackScore
-                  )
-                )
-              ) {
-
-                score =
-                  Number(
-                    fallbackScore
-                  );
-              }
-
-            } catch (e) {}
-          }
-
-          score =
-            Math.round(
-              Number(score) || 0
-            );
-
-          attemptScores.push(
-            score
-          );
+          attemptScores.push(score);
 
           renderPronunciationResult(
             score,
             detail
           );
-
-          closeSpeechObjects();
 
           setStatus(
             '採点完了。もう一度発音すると再採点します。'
@@ -1075,7 +1041,7 @@
 
           button.disabled = false;
 
-          closeSpeechObjects();
+          recognizer.close();
 
           setStatus(
             'エラー：' +
@@ -1088,8 +1054,6 @@
 
       button.disabled = false;
 
-      closeSpeechObjects();
-
       setStatus(
         'エラー：' +
         (
@@ -1100,25 +1064,112 @@
         )
       );
     }
-
-
-    function closeSpeechObjects() {
-
-      try {
-        if (recognizer) {
-          recognizer.close();
-          recognizer = null;
-        }
-      } catch (e) {}
-
-      try {
-        if (audioConfig) {
-          audioConfig.close();
-          audioConfig = null;
-        }
-      } catch (e) {}
-    }
   }
+
+
+  function getSpeechToken() {
+
+    return new Promise(
+      function(resolve, reject) {
+
+        const callbackName =
+          'speechTokenCallback_' +
+          Date.now();
+
+        const script =
+          document.createElement(
+            'script'
+          );
+
+        const timeout =
+          setTimeout(
+            function() {
+
+              cleanup();
+
+              reject(
+                new Error(
+                  'Speechトークン取得がタイムアウトしました。'
+                )
+              );
+
+            },
+            15000
+          );
+
+        window[callbackName] =
+          function(data) {
+
+            clearTimeout(timeout);
+
+            cleanup();
+
+            if (
+              !data ||
+              !data.token ||
+              !data.region
+            ) {
+
+              reject(
+                new Error(
+                  'Speechトークンを取得できませんでした。'
+                )
+              );
+
+              return;
+            }
+
+            resolve(data);
+          };
+
+        function cleanup() {
+
+          if (
+            script.parentNode
+          ) {
+
+            script.parentNode
+              .removeChild(script);
+          }
+
+          try {
+
+            delete window[
+              callbackName
+            ];
+
+          } catch (e) {}
+        }
+
+        script.onerror =
+          function() {
+
+            clearTimeout(timeout);
+
+            cleanup();
+
+            reject(
+              new Error(
+                'Apps Scriptに接続できませんでした。'
+              )
+            );
+          };
+
+        script.src =
+          APPS_SCRIPT_URL +
+          '?action=speechToken' +
+          '&callback=' +
+          encodeURIComponent(
+            callbackName
+          );
+
+        document.body.appendChild(
+          script
+        );
+      }
+    );
+  }
+
 
   function renderPronunciationResult(
     score,
