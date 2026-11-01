@@ -615,234 +615,346 @@
 
 
   function renderPhonemeProblems(
-    data
-  ) {
+  data
+) {
 
-    const root =
-      document.getElementById(
-        'problems'
-      );
+  const root =
+    document.getElementById(
+      'problems'
+    );
 
+  root.innerHTML = '';
 
-    root.innerHTML = '';
-
-
-    const candidates = [];
+  const candidates = [];
 
 
-    try {
+  try {
 
-      const words =
-        data
-          .NBest[0]
-          .Words || [];
-
-
-      words.forEach(
-        function(wordData) {
-
-          const phonemes =
-            wordData.Phonemes || [];
+    const words =
+      data
+        .NBest[0]
+        .Words || [];
 
 
-          phonemes.forEach(
-            function(phoneme) {
+    words.forEach(
+      function(wordData) {
 
-              const pa =
-                phoneme
-                  .PronunciationAssessment
-                || {};
+        const phonemes =
+          wordData.Phonemes || [];
 
 
-              const accuracy =
-                Number(
-                  pa.AccuracyScore
-                );
+        phonemes.forEach(
+          function(phoneme) {
+
+            const pa =
+              phoneme
+                .PronunciationAssessment
+              || {};
 
 
-              if (
-                !Number.isFinite(
-                  accuracy
-                )
-              ) {
-                return;
-              }
+            const accuracy =
+              Number(
+                pa.AccuracyScore
+              );
 
 
-              const target =
-                phoneme.Phoneme || '';
-
-
-              const nbest =
-                phoneme
-                  .NBestPhonemes
-                || [];
-
-
-              let heard = '';
-
-
-              if (
-                nbest.length > 0 &&
-                nbest[0].Phoneme
-              ) {
-
-                heard =
-                  nbest[0].Phoneme;
-              }
-
-
-              candidates.push({
-
-                word:
-                  wordData.Word || '',
-
-                target:
-                  target,
-
-                heard:
-                  heard,
-
-                accuracy:
-                  accuracy
-              });
+            if (
+              !Number.isFinite(
+                accuracy
+              )
+            ) {
+              return;
             }
-          );
-        }
-      );
-
-    } catch (error) {}
 
 
-    candidates.sort(
-      function(a, b) {
+            const target =
+              phoneme.Phoneme || '';
 
-        return (
-          a.accuracy -
-          b.accuracy
+
+            const nbest =
+              phoneme.NBestPhonemes || [];
+
+
+            let heard = '';
+
+
+            if (
+              nbest.length > 0 &&
+              nbest[0].Phoneme
+            ) {
+
+              heard =
+                nbest[0].Phoneme;
+            }
+
+
+            candidates.push({
+
+              word:
+                wordData.Word || '',
+
+              target:
+                target,
+
+              heard:
+                heard,
+
+              accuracy:
+                accuracy
+            });
+          }
         );
       }
     );
 
-
-    const problems =
-      candidates
-        .filter(
-          function(item) {
-
-            return (
-              item.accuracy < 80
-            );
-          }
-        )
-        .slice(0, 3);
+  } catch (error) {}
 
 
-    if (
-      problems.length === 0
-    ) {
+  candidates.sort(
+    function(a, b) {
 
-      root.textContent =
-        '大きな音素レベルの問題は検出されませんでした。';
-
-      return;
+      return (
+        a.accuracy -
+        b.accuracy
+      );
     }
+  );
 
 
-    const title =
-      document.createElement(
-        'h3'
+  const problems =
+    candidates
+      .filter(
+        function(item) {
+
+          return (
+            item.accuracy < 80
+          );
+        }
+      )
+      .slice(0, 3);
+
+
+  if (
+    problems.length === 0
+  ) {
+
+    root.textContent =
+      '大きな音素レベルの問題は検出されませんでした。';
+
+    return;
+  }
+
+
+  const title =
+    document.createElement(
+      'h3'
+    );
+
+  title.textContent =
+    '特に確認したい発音';
+
+  root.appendChild(title);
+
+
+  problems.forEach(
+    function(item) {
+
+      const div =
+        document.createElement(
+          'div'
+        );
+
+      div.className =
+        'problem';
+
+
+      const word =
+        document.createElement(
+          'div'
+        );
+
+      word.className =
+        'word';
+
+      word.textContent =
+        item.word;
+
+      div.appendChild(word);
+
+
+      const ipa =
+        document.createElement(
+          'div'
+        );
+
+      ipa.className =
+        'ipa';
+
+
+      if (
+        item.heard &&
+        item.heard !==
+        item.target
+      ) {
+
+        ipa.textContent =
+          '目標 /' +
+          item.target +
+          '/ → 今回は /' +
+          item.heard +
+          '/ に近い';
+
+      } else {
+
+        ipa.textContent =
+          '目標 /' +
+          item.target +
+          '/';
+      }
+
+
+      div.appendChild(ipa);
+
+
+      const advice =
+        getPhonemeAdvice(
+          item.target,
+          item.heard
+        );
+
+
+      if (advice) {
+
+        const adviceDiv =
+          document.createElement(
+            'div'
+          );
+
+        adviceDiv.style.marginTop =
+          '6px';
+
+        adviceDiv.textContent =
+          advice;
+
+        div.appendChild(
+          adviceDiv
+        );
+      }
+
+
+      const detail =
+        document.createElement(
+          'div'
+        );
+
+      detail.className =
+        'small';
+
+      detail.textContent =
+        'この音の精度：' +
+        Math.round(
+          item.accuracy
+        );
+
+      div.appendChild(
+        detail
       );
 
-    title.textContent =
-      '特に確認したい発音';
 
-    root.appendChild(title);
-
-
-    problems.forEach(
-      function(item) {
-
-        const div =
-          document.createElement(
-            'div'
-          );
-
-        div.className =
-          'problem';
+      root.appendChild(
+        div
+      );
+    }
+  );
+}
 
 
-        const word =
-          document.createElement(
-            'div'
-          );
+function getPhonemeAdvice(
+  target,
+  heard
+) {
 
-        word.className =
-          'word';
+  const advice = {
 
-        word.textContent =
-          item.word;
+    'ð':
+      '舌先を上下の前歯の間に軽く出し、舌と歯の間から空気を流しながら声を出します。/d/ のように舌で完全に空気を止めないのがポイントです。',
 
+    'θ':
+      '舌先を上下の前歯の間に軽く出し、声を出さずに息だけを摩擦させます。/s/ や /t/ にしないよう注意します。',
 
-        div.appendChild(word);
+    'æ':
+      '口をやや大きく横に開き、舌を前方・低めに置きます。日本語の「ア」よりも「エ」に近い方向へ口を広げます。',
 
+    'ʌ':
+      '口を大きく開きすぎず、舌を中央付近に置いて短く発音します。日本語の「ア」を強く言い過ぎないようにします。',
 
-        const ipa =
-          document.createElement(
-            'div'
-          );
+    'ɪ':
+      '舌を前方・やや高めに置きますが、/iː/ ほど緊張させません。短く、力を抜いて発音します。',
 
-        ipa.className =
-          'ipa';
+    'i':
+      '舌を前方・高めに保ち、口角を少し横へ広げます。短い /ɪ/ より明確に高い舌位置を保ちます。',
 
+    'iː':
+      '舌を前方・高めに保ち、母音を十分に維持します。/ɪ/ のように短く中央へ緩めないようにします。',
 
-        if (
-          item.heard &&
-          item.heard !==
-          item.target
-        ) {
+    'r':
+      '舌先を上あごに付けず、舌全体をやや後方へ引きます。アメリカ英語では舌先を接触させないことが重要です。',
 
-          ipa.textContent =
-            '目標 /' +
-            item.target +
-            '/ → 今回は /' +
-            item.heard +
-            '/ に近い';
+    'ɹ':
+      '舌先を上あごに付けず、舌全体をやや後方へ引きます。アメリカ英語のRは舌を接触させません。',
 
-        } else {
+    'l':
+      '舌先を上の前歯のすぐ後ろに付けます。語末では舌の後方も少し持ち上げます。',
 
-          ipa.textContent =
-            '目標 /' +
-            item.target +
-            '/';
-        }
+    'v':
+      '上の前歯を下唇に軽く触れさせ、空気を摩擦させながら声を出します。/b/ のように両唇を閉じません。',
 
+    'f':
+      '上の前歯を下唇に軽く触れさせ、声を出さずに息を摩擦させます。',
 
-        div.appendChild(ipa);
+    't':
+      '舌先を上の歯茎付近に付けて空気を一度止め、素早く離します。米語では位置によって弱いフラップ音になることもあります。',
 
+    'd':
+      '舌先を上の歯茎付近に付けて空気を止め、声を伴って離します。',
 
-        const detail =
-          document.createElement(
-            'div'
-          );
+    'ŋ':
+      '舌先ではなく舌の奥を上あごの奥に付け、空気を鼻へ抜きます。最後に /g/ を足さないようにします。',
 
-        detail.className =
-          'small';
+    'w':
+      '唇を丸めて前に出し、その直後に次の母音へ素早く移ります。',
 
-        detail.textContent =
-          'この音素の精度：' +
-          Math.round(
-            item.accuracy
-          );
+    'z':
+      '歯を近づけたまま空気を摩擦させ、声帯も振動させます。/s/ の無声音にならないようにします。',
 
-
-        div.appendChild(detail);
+    's':
+      '歯を近づけて細い隙間から息を出します。声帯は振動させません。'
+  };
 
 
-        root.appendChild(div);
-      }
-    );
+  let text =
+    advice[target] || '';
+
+
+  if (
+    heard &&
+    heard !== target
+  ) {
+
+    text =
+      '今回は /' +
+      heard +
+      '/ に近く判定されています。' +
+      (
+        text
+          ? ' ' + text
+          : ''
+      );
   }
+
+
+  return text;
+}
 
 
   function setStatus(text) {
