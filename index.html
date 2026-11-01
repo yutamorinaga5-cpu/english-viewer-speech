@@ -878,7 +878,7 @@
   }
 
 
-  async function assessPronunciation() {
+    async function assessPronunciation() {
 
     const text =
       document
@@ -886,44 +886,29 @@
         .value
         .trim();
 
-
     if (!text) {
-
-      setStatus(
-        '英文を入力してください。'
-      );
-
+      setStatus('英文を入力してください。');
       return;
     }
 
-
-    if (
-      text !==
-      lastReferenceText
-    ) {
-
+    if (text !== lastReferenceText) {
       attemptScores = [];
-
-      lastReferenceText =
-        text;
+      lastReferenceText = text;
     }
 
-
     const button =
-      document
-        .getElementById(
-          'recordButton'
-        );
+      document.getElementById(
+        'recordButton'
+      );
 
-
-    button.disabled =
-      true;
-
+    button.disabled = true;
 
     setStatus(
       'Azure Speechに接続しています…'
     );
 
+    let recognizer = null;
+    let audioConfig = null;
 
     try {
 
@@ -933,7 +918,6 @@
           {}
         );
 
-
       const speechConfig =
         SpeechSDK
           .SpeechConfig
@@ -942,48 +926,31 @@
             auth.region
           );
 
-
       speechConfig
         .speechRecognitionLanguage =
         'en-US';
 
-
-      const audioConfig =
+      audioConfig =
         SpeechSDK
           .AudioConfig
           .fromDefaultMicrophoneInput();
 
-
-      const recognizer =
+      recognizer =
         new SpeechSDK
           .SpeechRecognizer(
             speechConfig,
             audioConfig
           );
 
-
       const paJson =
         JSON.stringify({
-
-          referenceText:
-            text,
-
-          gradingSystem:
-            'HundredMark',
-
-          granularity:
-            'Phoneme',
-
-          phonemeAlphabet:
-            'IPA',
-
-          nBestPhonemeCount:
-            5,
-
-          enableMiscue:
-            true
+          referenceText: text,
+          gradingSystem: 'HundredMark',
+          granularity: 'Phoneme',
+          phonemeAlphabet: 'IPA',
+          nBestPhonemeCount: 5,
+          enableMiscue: true
         });
-
 
       const paConfig =
         SpeechSDK
@@ -992,118 +959,136 @@
             paJson
           );
 
-
       paConfig.applyTo(
         recognizer
       );
-
 
       setStatus(
         '🎤 発音してください。'
       );
 
+      recognizer.recognizeOnceAsync(
 
-      recognizer
-        .recognizeOnceAsync(
+        function(result) {
 
-          function(result) {
+          button.disabled = false;
 
-            button.disabled =
-              false;
-
-            recognizer.close();
-
-
-            if (
-              result.reason !==
+          const rawJson =
+            result.properties.getProperty(
               SpeechSDK
-                .ResultReason
-                .RecognizedSpeech
-            ) {
+                .PropertyId
+                .SpeechServiceResponse_JsonResult
+            );
 
-              setStatus(
-                '音声を認識できませんでした。'
+          let detail = {};
+
+          try {
+            detail =
+              JSON.parse(
+                rawJson
+              );
+          } catch (e) {
+            detail = {};
+          }
+
+          if (
+            result.reason !==
+            SpeechSDK
+              .ResultReason
+              .RecognizedSpeech
+          ) {
+
+            closeSpeechObjects();
+
+            setStatus(
+              '音声を認識できませんでした。もう一度発音してください。'
+            );
+
+            return;
+          }
+
+          const assessment =
+            SpeechSDK
+              .PronunciationAssessmentResult
+              .fromResult(
+                result
               );
 
-              return;
-            }
+          let score =
+            Number(
+              assessment
+                .pronunciationScore
+            );
 
-
-            const assessment =
-              SpeechSDK
-                .PronunciationAssessmentResult
-                .fromResult(
-                  result
-                );
-
-
-            const score =
-              Math.round(
-                assessment
-                  .pronunciationScore ||
-                0
-              );
-
-
-            const rawJson =
-              result
-                .properties
-                .getProperty(
-                  SpeechSDK
-                    .PropertyId
-                    .SpeechServiceResponse_JsonResult
-                );
-
-
-            let detail = {};
-
+          if (
+            !Number.isFinite(score) ||
+            score === 0
+          ) {
 
             try {
 
-              detail =
-                JSON.parse(
-                  rawJson
-                );
+              const fallbackScore =
+                detail
+                  .NBest[0]
+                  .PronunciationAssessment
+                  .PronScore;
+
+              if (
+                Number.isFinite(
+                  Number(
+                    fallbackScore
+                  )
+                )
+              ) {
+
+                score =
+                  Number(
+                    fallbackScore
+                  );
+              }
 
             } catch (e) {}
-
-
-            attemptScores.push(
-              score
-            );
-
-
-            renderPronunciationResult(
-              score,
-              detail
-            );
-
-
-            setStatus(
-              '採点完了。'
-            );
-          },
-
-
-          function(error) {
-
-            button.disabled =
-              false;
-
-            recognizer.close();
-
-            setStatus(
-              'エラー：' +
-              String(error)
-            );
           }
-        );
 
+          score =
+            Math.round(
+              Number(score) || 0
+            );
+
+          attemptScores.push(
+            score
+          );
+
+          renderPronunciationResult(
+            score,
+            detail
+          );
+
+          closeSpeechObjects();
+
+          setStatus(
+            '採点完了。もう一度発音すると再採点します。'
+          );
+        },
+
+        function(error) {
+
+          button.disabled = false;
+
+          closeSpeechObjects();
+
+          setStatus(
+            'エラー：' +
+            String(error)
+          );
+        }
+      );
 
     } catch (error) {
 
-      button.disabled =
-        false;
+      button.disabled = false;
+
+      closeSpeechObjects();
 
       setStatus(
         'エラー：' +
@@ -1115,8 +1100,25 @@
         )
       );
     }
-  }
 
+
+    function closeSpeechObjects() {
+
+      try {
+        if (recognizer) {
+          recognizer.close();
+          recognizer = null;
+        }
+      } catch (e) {}
+
+      try {
+        if (audioConfig) {
+          audioConfig.close();
+          audioConfig = null;
+        }
+      } catch (e) {}
+    }
+  }
 
   function renderPronunciationResult(
     score,
