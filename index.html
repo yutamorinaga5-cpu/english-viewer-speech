@@ -279,7 +279,27 @@ async function analyzeEnglish() {
 
     analysisContent.replaceChildren();
 
-    Object.entries(data).forEach(([key, value]) => {
+    const priority = [
+  'natural_translation_ja',
+  'translation_ja',
+  'phrases',
+  'modern_american_usage',
+  'british_note',
+  'advanced_note',
+  'sentence_pattern',
+  'svocm',
+  'sentence_structure',
+  'grammar_explanation_ja',
+  'words'
+];
+
+Object.entries(data)
+  .sort(([a], [b]) => {
+    const ai = priority.indexOf(a);
+    const bi = priority.indexOf(b);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+  })
+  .forEach(([key, value]) => {
       if (key === 'success' || value === null ||
           value === undefined || value === '') return;
 
