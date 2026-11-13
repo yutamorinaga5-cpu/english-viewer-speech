@@ -1,1771 +1,412 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>現代米語 English Viewer</title>
 
-  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
-
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       background: #f5f6f8;
       color: #202124;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: system-ui, sans-serif;
     }
 
     .app {
       max-width: 760px;
-      margin: 0 auto;
+      margin: auto;
       padding: 16px 12px 40px;
     }
 
     .card {
-      background: #fff;
+      background: white;
       border-radius: 16px;
-      padding: 16px;
+      padding: 18px;
       margin-bottom: 14px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 6px rgba(0,0,0,.08);
     }
 
-    h1 {
-      font-size: 1.4rem;
-      margin: 0 0 6px;
-    }
-
-    h2 {
-      font-size: 1.1rem;
-      margin: 0 0 12px;
-    }
-
-    h3 {
-      font-size: 1rem;
-      margin: 16px 0 6px;
-    }
+    h1 { margin: 0 0 6px; font-size: 1.4rem; }
+    h2 { margin: 0 0 12px; font-size: 1.1rem; }
 
     .subtitle {
       color: #5f6368;
-      font-size: 0.9rem;
-      margin-bottom: 14px;
+      font-size: .9rem;
+      margin-bottom: 15px;
     }
 
     textarea {
       width: 100%;
       min-height: 120px;
       resize: vertical;
+      padding: 12px;
       border: 1px solid #dadce0;
       border-radius: 12px;
-      padding: 12px;
       font-size: 1.05rem;
-      line-height: 1.55;
+      line-height: 1.6;
     }
 
     button {
       width: 100%;
       min-height: 52px;
-      border: 0;
+      border: none;
       border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 700;
       margin-top: 10px;
+      font-size: 1rem;
+      font-weight: bold;
       cursor: pointer;
     }
 
-    button:disabled {
-      opacity: 0.45;
-    }
+    button:disabled { opacity: .5; }
 
     #analyzeButton {
+      color: white;
       background: #1a73e8;
-      color: #fff;
     }
 
     #speakButton {
-      background: #e8f0fe;
       color: #1a73e8;
-    }
-
-    #recordButton {
-      background: #c5221f;
-      color: #fff;
+      background: #e8f0fe;
     }
 
     #status {
-      margin-top: 12px;
-      padding: 11px;
-      border-radius: 10px;
       background: #f1f3f4;
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 14px;
+      line-height: 1.6;
       white-space: pre-wrap;
-      line-height: 1.5;
     }
 
-    #analysisResult,
-    #pronunciationResult {
-      display: none;
-    }
+    #analysisResult { display: none; }
 
     .section {
-      padding: 12px 0;
-      border-top: 1px solid #e3e5e8;
+      padding: 14px 0;
+      border-bottom: 1px solid #e4e6e9;
     }
 
-    .section:first-child {
-      border-top: 0;
-    }
+    .section:last-child { border-bottom: none; }
 
     .label {
-      font-weight: 800;
-      margin-bottom: 5px;
+      font-weight: bold;
+      margin-bottom: 6px;
     }
 
     .value {
-      line-height: 1.65;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
       white-space: pre-wrap;
     }
 
     .item {
-      padding: 10px;
       margin: 8px 0;
-      border-radius: 10px;
+      padding: 11px;
       background: #f8f9fa;
-      line-height: 1.6;
+      border-radius: 10px;
     }
 
-    .score {
-      font-size: 2.3rem;
-      font-weight: 850;
-      margin-bottom: 6px;
-    }
-
-    .history {
-      color: #5f6368;
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-    }
-
-    .problem {
-      padding: 13px 0;
-      border-top: 1px solid #dadce0;
-    }
-
-    .problem:first-child {
-      border-top: 0;
-    }
-
-    .word {
-      font-weight: 800;
-      font-size: 1.05rem;
-    }
-
-    .ipa {
-      margin-top: 4px;
-      color: #b06000;
-      font-weight: 700;
-    }
-
-    .advice {
-      margin-top: 6px;
-      line-height: 1.65;
-    }
-
-    .small {
-      color: #5f6368;
-      font-size: 0.9rem;
-      margin-top: 5px;
-    }
-
-    .loading {
-      opacity: 0.7;
+    .field {
+      margin: 4px 0;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 
 <body>
+  <main class="app">
 
-<div class="app">
+    <section class="card">
+      <h1>現代米語 English Viewer</h1>
 
-  <div class="card">
+      <div class="subtitle">
+        意味・文法・構造・語彙・IPA・米語の読み上げ
+      </div>
 
-    <h1>現代米語 English Viewer</h1>
+      <textarea id="englishText"
+        aria-label="英文を入力">I didn't see that coming.</textarea>
 
-    <div class="subtitle">
-      英文の意味・文法・構造・語彙・発音をまとめて確認
-    </div>
+      <button id="analyzeButton" onclick="analyzeEnglish()">
+        📘 英文を解析
+      </button>
 
-    <textarea id="englishText">I didn't see that coming.</textarea>
+      <button id="speakButton" onclick="speakEnglish()">
+        🔊 米語で聞く
+      </button>
 
-    <button
-      id="analyzeButton"
-      onclick="analyzeEnglish()"
-    >
-      📘 英文を解析
-    </button>
+      <div id="status">英文を入力してください。</div>
+    </section>
 
-    <button
-      id="speakButton"
-      onclick="speakEnglish()"
-    >
-      🔊 米語で聞く
-    </button>
+    <section id="analysisResult" class="card">
+      <h2>英文のしくみ</h2>
+      <div id="analysisContent"></div>
+    </section>
 
-    <button
-      id="recordButton"
-      onclick="assessPronunciation()"
-    >
-      🎤 発音する
-    </button>
-
-    <div id="status">
-      英文を入力してください。
-    </div>
-
-  </div>
-
-
-  <div
-    id="analysisResult"
-    class="card"
-  >
-    <h2>英文のしくみ</h2>
-
-    <div id="analysisContent"></div>
-  </div>
-
-
-  <div
-    id="pronunciationResult"
-    class="card"
-  >
-
-    <div
-      id="score"
-      class="score"
-    ></div>
-
-    <div
-      id="history"
-      class="history"
-    ></div>
-
-    <div id="problems"></div>
-
-  </div>
-
-</div>
-
+  </main>
 
 <script>
-
   const APPS_SCRIPT_URL =
     'https://script.google.com/macros/s/AKfycbwwwNsySQEF2s4LW8ow5QEEsDXC2tJXNLk8jEDWaVS1JC9pYqYdzF29QjuxdXeJFRmkjQ/exec';
 
+  const englishText = document.getElementById('englishText');
+  const analyzeButton = document.getElementById('analyzeButton');
+  const analysisResult = document.getElementById('analysisResult');
+  const analysisContent = document.getElementById('analysisContent');
 
-  let attemptScores = [];
+  englishText.addEventListener('input', function () {
+    analysisResult.style.display = 'none';
+    setStatus('英文を変更しました。解析を押してください。');
+  });
 
-  let lastReferenceText = '';
-
-
-  function analyzeEnglish() {
-
-    const text =
-      document
-        .getElementById('englishText')
-        .value
-        .trim();
-
+  async function analyzeEnglish() {
+    const text = englishText.value.trim();
 
     if (!text) {
-
-      setStatus(
-        '英文を入力してください。'
-      );
-
+      setStatus('英文を入力してください。');
       return;
     }
 
+    analyzeButton.disabled = true;
+    analysisResult.style.display = 'none';
+    setStatus('英文を解析しています…');
 
-    const button =
-      document
-        .getElementById(
-          'analyzeButton'
-        );
+    try {
+      const data = await getJsonp('analyzeEnglish', { text });
 
-
-    button.disabled =
-      true;
-
-
-    setStatus(
-      '英文を解析しています…'
-    );
-
-
-    getJsonp(
-      'analyzeEnglish',
-      {
-        text: text
-      }
-    )
-    .then(
-      function(data) {
-
-        button.disabled =
-          false;
-
-        renderAnalysis(
-          data
-        );
-
-        setStatus(
-          '解析完了。'
+      if (!data || data.success === false || data.error) {
+        throw new Error(
+          data && data.error
+            ? data.error
+            : '解析結果を取得できませんでした。'
         );
       }
-    )
-    .catch(
-      function(error) {
 
-        button.disabled =
-          false;
+      renderAnalysis(data);
+      setStatus('解析完了。');
 
-        setStatus(
-          '解析エラー：' +
-          error.message
-        );
-      }
-    );
+    } catch (error) {
+      setStatus('解析エラー：' + error.message);
+
+    } finally {
+      analyzeButton.disabled = false;
+    }
   }
 
+  function renderAnalysis(data) {
+    analysisContent.replaceChildren();
 
-  function renderAnalysis(
-    data
-  ) {
+    const entries = Object.entries(data).filter(
+      ([key]) => key !== 'success'
+    );
 
-    const result =
-      document
-        .getElementById(
-          'analysisResult'
-        );
+    entries.forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '') {
+        return;
+      }
 
-    const root =
-      document
-        .getElementById(
-          'analysisContent'
-        );
+      const section = document.createElement('div');
+      section.className = 'section';
 
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = getJapaneseLabel(key);
 
-    root.innerHTML =
-      '';
+      const body = document.createElement('div');
+      body.className = 'value';
+      renderValue(body, value);
 
+      section.append(label, body);
+      analysisContent.appendChild(section);
+    });
 
-    if (
-      !data ||
-      typeof data !==
-      'object'
-    ) {
+    if (!analysisContent.children.length) {
+      analysisContent.textContent = '解析内容がありません。';
+    }
 
-      root.textContent =
-        '解析結果を取得できませんでした。';
+    analysisResult.style.display = 'block';
+  }
 
-      result.style.display =
-        'block';
+  function renderValue(parent, value) {
+    if (value === null || value === undefined) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        parent.textContent = '該当なし';
+        return;
+      }
+
+      value.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        renderValue(div, item);
+        parent.appendChild(div);
+      });
 
       return;
     }
 
-
-    Object.keys(
-      data
-    )
-    .forEach(
-      function(key) {
-
-        if (
-          key === 'success'
-        ) {
+    if (typeof value === 'object') {
+      Object.entries(value).forEach(([key, child]) => {
+        if (child === null || child === undefined || child === '') {
           return;
         }
 
+        const div = document.createElement('div');
+        div.className = 'field';
 
-        const section =
-          document
-            .createElement(
-              'div'
-            );
+        const strong = document.createElement('strong');
+        strong.textContent = getJapaneseLabel(key) + '：';
 
-        section.className =
-          'section';
-
-
-        const label =
-          document
-            .createElement(
-              'div'
-            );
-
-        label.className =
-          'label';
-
-        label.textContent =
-          getJapaneseLabel(
-            key
-          );
-
-
-        const value =
-          document
-            .createElement(
-              'div'
-            );
-
-        value.className =
-          'value';
-
-
-        renderValue(
-          value,
-          data[key]
-        );
-
-
-        section.appendChild(
-          label
-        );
-
-        section.appendChild(
-          value
-        );
-
-        root.appendChild(
-          section
-        );
-      }
-    );
-
-
-    result.style.display =
-      'block';
-  }
-
-
-  function renderValue(
-    parent,
-    value
-  ) {
-
-    if (
-      value === null ||
-      value === undefined
-    ) {
-
-      parent.textContent =
-        '';
+        div.appendChild(strong);
+        renderValue(div, child);
+        parent.appendChild(div);
+      });
 
       return;
     }
 
-
-    if (
-      Array.isArray(
-        value
-      )
-    ) {
-
-      value.forEach(
-        function(item) {
-
-          const div =
-            document
-              .createElement(
-                'div'
-              );
-
-          div.className =
-            'item';
-
-
-          if (
-            typeof item ===
-            'object'
-          ) {
-
-            Object.keys(
-              item
-            )
-            .forEach(
-              function(key) {
-
-                const line =
-                  document
-                    .createElement(
-                      'div'
-                    );
-
-                line.innerHTML =
-                  '<strong>' +
-                  escapeHtml(
-                    getJapaneseLabel(
-                      key
-                    )
-                  ) +
-                  '：</strong>' +
-                  escapeHtml(
-                    formatSimpleValue(
-                      item[key]
-                    )
-                  );
-
-                div.appendChild(
-                  line
-                );
-              }
-            );
-
-          } else {
-
-            div.textContent =
-              String(item);
-          }
-
-
-          parent.appendChild(
-            div
-          );
-        }
-      );
-
-      return;
-    }
-
-
-    if (
-      typeof value ===
-      'object'
-    ) {
-
-      Object.keys(
-        value
-      )
-      .forEach(
-        function(key) {
-
-          const div =
-            document
-              .createElement(
-                'div'
-              );
-
-          div.className =
-            'item';
-
-          div.innerHTML =
-            '<strong>' +
-            escapeHtml(
-              getJapaneseLabel(
-                key
-              )
-            ) +
-            '：</strong>' +
-            escapeHtml(
-              formatSimpleValue(
-                value[key]
-              )
-            );
-
-          parent.appendChild(
-            div
-          );
-        }
-      );
-
-      return;
-    }
-
-
-    parent.textContent =
-      String(value);
-  }
-
-
-  function formatSimpleValue(
-    value
-  ) {
-
-    if (
-      value === null ||
-      value === undefined
-    ) {
-      return '';
-    }
-
-
-    if (
-      Array.isArray(
-        value
-      )
-    ) {
-
-      return value
-        .map(
-          function(item) {
-
-            if (
-              typeof item ===
-              'object'
-            ) {
-
-              return JSON.stringify(
-                item
-              );
-            }
-
-            return String(
-              item
-            );
-          }
-        )
-        .join(' / ');
-    }
-
-
-    if (
-      typeof value ===
-      'object'
-    ) {
-
-      return Object.keys(
-        value
-      )
-      .map(
-        function(key) {
-
-          return (
-            getJapaneseLabel(
-              key
-            ) +
-            ': ' +
-            formatSimpleValue(
-              value[key]
-            )
-          );
-        }
-      )
-      .join(' / ');
-    }
-
-
-    return String(
-      value
+    parent.appendChild(
+      document.createTextNode(String(value))
     );
   }
 
-
-  function getJapaneseLabel(
-    key
-  ) {
-
+  function getJapaneseLabel(key) {
     const labels = {
-
-      translation_ja:
-        '自然な日本語訳',
-
-      natural_translation_ja:
-        '自然な日本語訳',
-
-      sentence_pattern:
-        '文型',
-
-      sentence_structure:
-        '文の構造',
-
-      structure:
-        '文の構造',
-
-      svocm:
-        'S / V / O / C / M',
-
-      grammar:
-        '文法',
-
-      grammar_explanation_ja:
-        '文法解説',
-
-      vocabulary:
-        '単語・語彙',
-
-      words:
-        '単語・語彙',
-
-      phrases:
-        '句・イディオム',
-
-      idioms:
-        '句・イディオム',
-
-      pronunciation:
-        '発音',
-
-      ipa:
-        '米語IPA',
-
-      syllables:
-        'シラブル',
-
-      stress:
-        '強勢',
-
-      modern_usage:
-        '現代米語での使われ方',
-
-      modern_american_usage:
-        '現代アメリカ英語',
-
-      usage_note:
-        '使用上のポイント',
-
-      british_note:
-        '英国英語との差',
-
-      advanced_note:
-        '上級解説',
-
-      word:
-        '単語',
-
-      meaning:
-        '意味',
-
-      meaning_ja:
-        '意味',
-
-      part_of_speech:
-        '品詞',
-
-      pos:
-        '品詞',
-
-      role:
-        '文中での役割',
-
-      explanation:
-        '解説',
-
-      example:
-        '例',
-
-      source:
-        '出典'
+      natural_translation_ja: '自然な日本語訳',
+      translation_ja: '自然な日本語訳',
+      sentence_pattern: '文型',
+      svocm: 'S / V / O / C / M',
+      sentence_structure: '文の構造',
+      structure: '文の構造',
+      grammar_explanation_ja: '文法解説',
+      grammar: '文法',
+      words: '単語・語彙',
+      vocabulary: '単語・語彙',
+      phrases: '句・イディオム',
+      idioms: '句・イディオム',
+      modern_american_usage: '現代アメリカ英語',
+      modern_usage: '現代米語の使い方',
+      british_note: '英国英語との差',
+      advanced_note: '上級解説',
+      word: '単語',
+      meaning_ja: '意味',
+      meaning: '意味',
+      part_of_speech: '品詞',
+      pos: '品詞',
+      role: '文中での役割',
+      ipa: '米語IPA',
+      syllables: 'シラブル',
+      stress: '強勢',
+      phrase: '表現',
+      explanation: '解説',
+      example: '例文',
+      source: '出典',
+      S: '主語 S',
+      V: '動詞 V',
+      O: '目的語 O',
+      C: '補語 C',
+      M: '修飾語 M'
     };
 
-
-    return (
-      labels[key] ||
-      key
-        .replace(
-          /_/g,
-          ' '
-        )
-    );
+    return labels[key] || key.replace(/_/g, ' ');
   }
-
-
-  function escapeHtml(
-    value
-  ) {
-
-    return String(
-      value
-    )
-    .replace(
-      /&/g,
-      '&amp;'
-    )
-    .replace(
-      /</g,
-      '&lt;'
-    )
-    .replace(
-      />/g,
-      '&gt;'
-    )
-    .replace(
-      /"/g,
-      '&quot;'
-    )
-    .replace(
-      /'/g,
-      '&#039;'
-    );
-  }
-
 
   function speakEnglish() {
-
-    const text =
-      document
-        .getElementById('englishText')
-        .value
-        .trim();
-
+    const text = englishText.value.trim();
 
     if (!text) {
-
-      setStatus(
-        '英文を入力してください。'
-      );
-
+      setStatus('英文を入力してください。');
       return;
     }
 
+    if (!('speechSynthesis' in window)) {
+      setStatus('このブラウザでは音声再生を利用できません。');
+      return;
+    }
 
     speechSynthesis.cancel();
 
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 1.0;
 
-    const utterance =
-      new SpeechSynthesisUtterance(
-        text
-      );
+    const voices = speechSynthesis.getVoices();
 
+    const americanVoice = voices.find(
+      voice => voice.lang.toLowerCase() === 'en-us'
+    );
 
-    utterance.lang =
-      'en-US';
-
-    utterance.rate =
-      1.0;
-
-
-    const voices =
-      speechSynthesis
-        .getVoices();
-
-
-    const americanVoice =
-      voices.find(
-        function(voice) {
-
-          return (
-            voice.lang &&
-            voice.lang
-              .toLowerCase()
-              .startsWith(
-                'en-us'
-              )
-          );
-        }
-      );
-
-
-    if (
-      americanVoice
-    ) {
-
-      utterance.voice =
-        americanVoice;
+    if (americanVoice) {
+      utterance.voice = americanVoice;
     }
 
-
-    speechSynthesis.speak(
-      utterance
-    );
-  }
-
-
-  async function assessPronunciation() {
-
-    const text =
-      document
-        .getElementById('englishText')
-        .value
-        .trim();
-
-    if (!text) {
-      return;
-    }
-
-    if (
-      text !==
-      lastReferenceText
-    ) {
-
-      attemptScores = [];
-
-      lastReferenceText =
-        text;
-    }
-
-    const button =
-      document.getElementById('recordButton');
-
-    button.disabled = true;
-
-    setStatus(
-      'Azure Speechに接続しています…'
-    );
-
-    try {
-
-      const auth =
-        await getSpeechToken();
-
-      if (
-        typeof SpeechSDK === 'undefined'
-      ) {
-
-        throw new Error(
-          'Azure Speech SDKを読み込めませんでした。'
-        );
-      }
-
-      const speechConfig =
-        SpeechSDK.SpeechConfig
-          .fromAuthorizationToken(
-            auth.token,
-            auth.region
-          );
-
-      speechConfig.speechRecognitionLanguage =
-        'en-US';
-
-      const audioConfig =
-        SpeechSDK.AudioConfig
-          .fromDefaultMicrophoneInput();
-
-      const recognizer =
-        new SpeechSDK.SpeechRecognizer(
-          speechConfig,
-          audioConfig
-        );
-
-      const paJson =
-        JSON.stringify({
-
-          referenceText: text,
-
-          gradingSystem:
-            'HundredMark',
-
-          granularity:
-            'Phoneme',
-
-          phonemeAlphabet:
-            'IPA',
-
-          nBestPhonemeCount:
-            5,
-
-          enableMiscue:
-            true
-        });
-
-      const paConfig =
-        SpeechSDK
-          .PronunciationAssessmentConfig
-          .fromJSON(paJson);
-
-      paConfig.applyTo(
-        recognizer
-      );
-
-      setStatus(
-        '🎤 発音してください。読み終わったら少し待ってください。'
-      );
-
-      recognizer.recognizeOnceAsync(
-
-        function(result) {
-
-          button.disabled = false;
-
-          recognizer.close();
-
-          if (
-            result.reason !==
-            SpeechSDK.ResultReason.RecognizedSpeech
-          ) {
-
-            setStatus(
-              '音声を認識できませんでした。もう一度試してください。'
-            );
-
-            return;
-          }
-
-          const assessment =
-            SpeechSDK
-              .PronunciationAssessmentResult
-              .fromResult(result);
-
-          const score =
-            Math.round(
-              assessment.pronunciationScore || 0
-            );
-
-          const rawJson =
-            result.properties.getProperty(
-              SpeechSDK
-                .PropertyId
-                .SpeechServiceResponse_JsonResult
-            );
-
-          let detail = {};
-
-          try {
-            detail =
-              JSON.parse(rawJson);
-          } catch (e) {
-            detail = {};
-          }
-
-          attemptScores.push(score);
-
-          renderPronunciationResult(
-            score,
-            detail
-          );
-
-          setStatus(
-            '採点完了。もう一度発音すると再採点します。'
-          );
-        },
-
-        function(error) {
-
-          button.disabled = false;
-
-          recognizer.close();
-
-          setStatus(
-            'エラー：' +
-            String(error)
-          );
-        }
-      );
-
-    } catch (error) {
-
-      button.disabled = false;
-
-      setStatus(
-        'エラー：' +
-        (
-          error &&
-          error.message
-            ? error.message
-            : String(error)
-        )
-      );
-    }
-  }
-
-
-  function getSpeechToken() {
-
-    return new Promise(
-      function(resolve, reject) {
-
-        const callbackName =
-          'speechTokenCallback_' +
-          Date.now();
-
-        const script =
-          document.createElement(
-            'script'
-          );
-
-        const timeout =
-          setTimeout(
-            function() {
-
-              cleanup();
-
-              reject(
-                new Error(
-                  'Speechトークン取得がタイムアウトしました。'
-                )
-              );
-
-            },
-            15000
-          );
-
-        window[callbackName] =
-          function(data) {
-
-            clearTimeout(timeout);
-
-            cleanup();
-
-            if (
-              !data ||
-              !data.token ||
-              !data.region
-            ) {
-
-              reject(
-                new Error(
-                  'Speechトークンを取得できませんでした。'
-                )
-              );
-
-              return;
-            }
-
-            resolve(data);
-          };
-
-        function cleanup() {
-
-          if (
-            script.parentNode
-          ) {
-
-            script.parentNode
-              .removeChild(script);
-          }
-
-          try {
-
-            delete window[
-              callbackName
-            ];
-
-          } catch (e) {}
-        }
-
-        script.onerror =
-          function() {
-
-            clearTimeout(timeout);
-
-            cleanup();
-
-            reject(
-              new Error(
-                'Apps Scriptに接続できませんでした。'
-              )
-            );
-          };
-
-        script.src =
-          APPS_SCRIPT_URL +
-          '?action=speechToken' +
-          '&callback=' +
-          encodeURIComponent(
-            callbackName
-          );
-
-        document.body.appendChild(
-          script
-        );
-      }
-    );
-  }
-
-
-  function renderPronunciationResult(
-    score,
-    detail
-  ) {
-
-    document
-      .getElementById(
-        'pronunciationResult'
-      )
-      .style.display =
-      'block';
-
-
-    document
-      .getElementById(
-        'score'
-      )
-      .textContent =
-      score + '点';
-
-
-    document
-      .getElementById(
-        'history'
-      )
-      .textContent =
-      attemptScores
-        .map(
-          function(
-            value,
-            index
-          ) {
-
-            return (
-              (index + 1) +
-              '回目 ' +
-              value +
-              '点'
-            );
-          }
-        )
-        .join('　');
-
-
-    renderPhonemeProblems(
-      detail
-    );
-  }
-
-
-  function renderPhonemeProblems(
-    data
-  ) {
-
-    const root =
-      document
-        .getElementById(
-          'problems'
-        );
-
-
-    root.innerHTML =
-      '';
-
-
-    const candidates =
-      [];
-
-
-    try {
-
-      const words =
-        data
-          .NBest[0]
-          .Words ||
-        [];
-
-
-      words.forEach(
-        function(wordData) {
-
-          const phonemes =
-            wordData
-              .Phonemes ||
-            [];
-
-
-          phonemes.forEach(
-            function(phoneme) {
-
-              const pa =
-                phoneme
-                  .PronunciationAssessment ||
-                {};
-
-
-              const accuracy =
-                Number(
-                  pa.AccuracyScore
-                );
-
-
-              if (
-                !Number.isFinite(
-                  accuracy
-                )
-              ) {
-                return;
-              }
-
-
-              const target =
-                String(
-                  phoneme.Phoneme ||
-                  ''
-                )
-                .trim();
-
-
-              const nbest =
-                phoneme
-                  .NBestPhonemes ||
-                [];
-
-
-              let heard =
-                '';
-
-
-              if (
-                nbest.length > 0 &&
-                nbest[0].Phoneme
-              ) {
-
-                heard =
-                  String(
-                    nbest[0].Phoneme
-                  )
-                  .trim();
-              }
-
-
-              candidates.push({
-
-                word:
-                  wordData.Word ||
-                  '',
-
-                target:
-                  target,
-
-                heard:
-                  heard,
-
-                accuracy:
-                  accuracy
-              });
-            }
-          );
-        }
-      );
-
-    } catch (error) {}
-
-
-    candidates.sort(
-      function(a, b) {
-
-        return (
-          a.accuracy -
-          b.accuracy
-        );
-      }
-    );
-
-
-    const problems =
-      candidates
-        .filter(
-          function(item) {
-
-            return (
-              item.accuracy <
-              80
-            );
-          }
-        )
-        .slice(
-          0,
-          3
-        );
-
-
-    if (
-      problems.length ===
-      0
-    ) {
-
-      root.textContent =
-        '大きな音素レベルの問題は検出されませんでした。';
-
-      return;
-    }
-
-
-    const title =
-      document
-        .createElement(
-          'h3'
-        );
-
-
-    title.textContent =
-      '特に確認したい発音';
-
-
-    root.appendChild(
-      title
-    );
-
-
-    problems.forEach(
-      function(item) {
-
-        const div =
-          document
-            .createElement(
-              'div'
-            );
-
-
-        div.className =
-          'problem';
-
-
-        const word =
-          document
-            .createElement(
-              'div'
-            );
-
-
-        word.className =
-          'word';
-
-        word.textContent =
-          item.word;
-
-
-        div.appendChild(
-          word
-        );
-
-
-        const ipa =
-          document
-            .createElement(
-              'div'
-            );
-
-
-        ipa.className =
-          'ipa';
-
-
-        if (
-          item.heard &&
-          item.heard !==
-          item.target
-        ) {
-
-          ipa.textContent =
-            '目標 /' +
-            item.target +
-            '/ → 今回は /' +
-            item.heard +
-            '/ に近い';
-
-        } else {
-
-          ipa.textContent =
-            '目標 /' +
-            item.target +
-            '/';
-        }
-
-
-        div.appendChild(
-          ipa
-        );
-
-
-        const advice =
-          document
-            .createElement(
-              'div'
-            );
-
-
-        advice.className =
-          'advice';
-
-        advice.textContent =
-          getPhonemeAdvice(
-            item.target,
-            item.heard
-          ) ||
-          (
-            '目標音 /' +
-            item.target +
-            '/ を意識して、もう一度発音してください。'
-          );
-
-
-        div.appendChild(
-          advice
-        );
-
-
-        const detail =
-          document
-            .createElement(
-              'div'
-            );
-
-
-        detail.className =
-          'small';
-
-        detail.textContent =
-          'この音の精度：' +
-          Math.round(
-            item.accuracy
-          );
-
-
-        div.appendChild(
-          detail
-        );
-
-
-        root.appendChild(
-          div
-        );
-      }
-    );
-  }
-
-
-  function getPhonemeAdvice(
-    target,
-    heard
-  ) {
-
-    const advice = {
-
-      'ð':
-        '舌先を上下の前歯の間に軽く出し、空気を流しながら声を出します。/d/ のように完全に止めません。',
-
-      'θ':
-        '舌先を前歯の間に軽く出し、声を出さずに息を摩擦させます。',
-
-      'æ':
-        '口をやや大きく横に開き、舌を前方・低めに置きます。',
-
-      'ʌ':
-        '口を開きすぎず、舌を中央付近に置いて短く発音します。',
-
-      'ɪ':
-        '舌を前方・やや高めに置き、力を抜いて短く発音します。',
-
-      'i':
-        '舌を前方・高めに保ち、口角を少し横に広げます。',
-
-      'ɹ':
-        '舌先を上あごに付けず、舌全体を少し後方へ引きます。',
-
-      'r':
-        '舌先を上あごに付けず、舌全体を少し後方へ引きます。',
-
-      'l':
-        '舌先を上の前歯のすぐ後ろに付けます。',
-
-      'v':
-        '上の前歯を下唇に軽く当て、声を出しながら空気を摩擦させます。',
-
-      'f':
-        '上の前歯を下唇に軽く当て、声を出さずに息を摩擦させます。',
-
-      't':
-        '舌先を上の歯茎付近に付けて空気を止め、素早く離します。',
-
-      'd':
-        '舌先を上の歯茎付近に付け、声を伴って離します。',
-
-      'ŋ':
-        '舌先ではなく舌の奥を上あごの奥に付け、空気を鼻へ抜きます。最後に /g/ を足しません。',
-
-      'w':
-        '唇を丸めて前へ出し、そのまま次の母音へ移ります。',
-
-      'z':
-        '歯を近づけ、空気を摩擦させながら声帯も振動させます。',
-
-      's':
-        '歯を近づけ、細い隙間から声を出さずに息を流します。'
+    utterance.onerror = () => {
+      setStatus('音声を再生できませんでした。');
     };
 
-
-    let text =
-      advice[target] ||
-      '';
-
-
-    if (
-      heard &&
-      heard !==
-      target
-    ) {
-
-      text =
-        '今回は /' +
-        heard +
-        '/ に近く判定されています。 ' +
-        text;
-    }
-
-
-    return text;
+    speechSynthesis.speak(utterance);
   }
 
+  function getJsonp(action, params = {}) {
+    return new Promise((resolve, reject) => {
+      const callbackName =
+        'englishViewerCallback_' +
+        Date.now() + '_' +
+        Math.floor(Math.random() * 100000);
 
-  function getJsonp(
-    action,
-    params
-  ) {
+      const script = document.createElement('script');
+      let finished = false;
 
-    return new Promise(
-      function(
-        resolve,
-        reject
-      ) {
+      const timer = setTimeout(() => {
+        finish(new Error('接続がタイムアウトしました。'));
+      }, 60000);
 
-        const callbackName =
-          'callback_' +
-          Date.now() +
-          '_' +
-          Math.floor(
-            Math.random() *
-            100000
-          );
+      function finish(error, data) {
+        if (finished) return;
+        finished = true;
 
+        clearTimeout(timer);
+        script.remove();
 
-        const script =
-          document
-            .createElement(
-              'script'
-            );
-
-
-        const timeout =
-          setTimeout(
-            function() {
-
-              cleanup();
-
-              reject(
-                new Error(
-                  '接続がタイムアウトしました。'
-                )
-              );
-            },
-            20000
-          );
-
-
-        window[
-          callbackName
-        ] =
-          function(data) {
-
-            clearTimeout(
-              timeout
-            );
-
-            cleanup();
-
-            resolve(
-              data
-            );
-          };
-
-
-        function cleanup() {
-
-          if (
-            script.parentNode
-          ) {
-
-            script
-              .parentNode
-              .removeChild(
-                script
-              );
-          }
-
-
-          try {
-
-            delete window[
-              callbackName
-            ];
-
-          } catch (e) {}
+        try {
+          delete window[callbackName];
+        } catch (e) {
+          window[callbackName] = undefined;
         }
 
-
-        script.onerror =
-          function() {
-
-            clearTimeout(
-              timeout
-            );
-
-            cleanup();
-
-            reject(
-              new Error(
-                'Apps Scriptに接続できませんでした。'
-              )
-            );
-          };
-
-
-        const query =
-          Object.keys(
-            params || {}
-          )
-          .map(
-            function(key) {
-
-              return (
-                encodeURIComponent(
-                  key
-                ) +
-                '=' +
-                encodeURIComponent(
-                  params[key]
-                )
-              );
-            }
-          )
-          .join('&');
-
-
-        script.src =
-          APPS_SCRIPT_URL +
-          '?action=' +
-          encodeURIComponent(
-            action
-          ) +
-          '&callback=' +
-          encodeURIComponent(
-            callbackName
-          ) +
-          (
-            query
-              ? '&' + query
-              : ''
-          );
-
-
-        document
-          .body
-          .appendChild(
-            script
-          );
+        if (error) {
+          reject(error);
+        } else {
+          resolve(data);
+        }
       }
-    );
+
+      window[callbackName] = data => finish(null, data);
+
+      script.onerror = () => {
+        finish(new Error('Apps Scriptに接続できませんでした。'));
+      };
+
+      const query = new URLSearchParams({
+        action,
+        callback: callbackName,
+        ...params
+      });
+
+      script.src = APPS_SCRIPT_URL + '?' + query.toString();
+      document.body.appendChild(script);
+    });
   }
 
-
-  function setStatus(
-    text
-  ) {
-
-    document
-      .getElementById(
-        'status'
-      )
-      .textContent =
-      text;
+  function setStatus(message) {
+    document.getElementById('status').textContent = message;
   }
-
 </script>
-
 </body>
 </html>
