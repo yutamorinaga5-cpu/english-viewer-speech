@@ -3,217 +3,292 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>現代米語 English Viewer</title>
-
   <style>
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       background: #f5f6f8;
       color: #202124;
       font-family: system-ui, sans-serif;
     }
-
     .app {
       max-width: 760px;
       margin: auto;
       padding: 16px 12px 40px;
     }
-
     .card {
       background: white;
-      border-radius: 16px;
       padding: 18px;
       margin-bottom: 14px;
-      box-shadow: 0 1px 6px rgba(0,0,0,.08);
+      border-radius: 16px;
+      box-shadow: 0 1px 6px #0001;
     }
-
-    h1 { margin: 0 0 6px; font-size: 1.4rem; }
-    h2 { margin: 0 0 12px; font-size: 1.1rem; }
-
-    .subtitle {
-      color: #5f6368;
-      font-size: .9rem;
-      margin-bottom: 15px;
-    }
-
+    h1 { font-size: 1.4rem; margin: 0 0 6px; }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; }
+    .sub { color: #5f6368; font-size: .9rem; margin-bottom: 14px; }
     textarea {
       width: 100%;
-      min-height: 120px;
-      resize: vertical;
+      min-height: 110px;
       padding: 12px;
+      resize: vertical;
       border: 1px solid #dadce0;
       border-radius: 12px;
-      font-size: 1.05rem;
+      font: inherit;
       line-height: 1.6;
     }
-
     button {
       width: 100%;
-      min-height: 52px;
+      min-height: 48px;
       border: none;
-      border-radius: 12px;
+      border-radius: 11px;
       margin-top: 10px;
-      font-size: 1rem;
-      font-weight: bold;
+      padding: 9px;
       cursor: pointer;
+      font: inherit;
+      font-weight: 700;
     }
-
-    button:disabled { opacity: .5; }
-
-    #analyzeButton {
-      color: white;
-      background: #1a73e8;
-    }
-
-    #speakButton {
-      color: #1a73e8;
-      background: #e8f0fe;
-    }
-
-    #status {
+    button:disabled { opacity: .5; cursor: default; }
+    #analyzeButton, #newsButton { background: #1a73e8; color: white; }
+    #speakButton { background: #e8f0fe; color: #1a73e8; }
+    #moreButton { background: #edf0f4; }
+    #status, #newsStatus {
+      margin-top: 12px;
+      padding: 11px;
       background: #f1f3f4;
       border-radius: 10px;
-      padding: 12px;
-      margin-top: 14px;
       line-height: 1.6;
       white-space: pre-wrap;
     }
-
-    #analysisResult { display: none; }
-
-    .section {
-      padding: 14px 0;
-      border-bottom: 1px solid #e4e6e9;
+    #analysisResult, #moreButton { display: none; }
+    .newsItem, .section {
+      padding: 13px 0;
+      border-bottom: 1px solid #e5e7eb;
     }
-
-    .section:last-child { border-bottom: none; }
-
-    .label {
-      font-weight: bold;
-      margin-bottom: 6px;
+    .newsTitle { font-weight: 750; line-height: 1.5; }
+    .description {
+      font-size: .94rem;
+      line-height: 1.6;
+      margin-top: 6px;
     }
-
-    .value {
-      line-height: 1.7;
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
+    .source { color: #5f6368; font-size: .82rem; margin-top: 6px; }
+    .chooseButton {
+      background: #e8f0fe;
+      color: #1a73e8;
+      min-height: 40px;
     }
-
+    .label { font-weight: 750; margin-bottom: 5px; }
+    .value { line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .field { margin: 5px 0; }
     .item {
-      margin: 8px 0;
-      padding: 11px;
       background: #f8f9fa;
       border-radius: 10px;
+      padding: 11px;
+      margin: 8px 0;
     }
-
-    .field {
-      margin: 4px 0;
-      white-space: pre-wrap;
-    }
+    a { color: #1a73e8; overflow-wrap: anywhere; }
   </style>
 </head>
-
 <body>
-  <main class="app">
+<main class="app">
 
-    <section class="card">
-      <h1>現代米語 English Viewer</h1>
+  <section class="card">
+    <h1>現代米語 English Viewer</h1>
+    <div class="sub">自然な米語を読み、文法・語彙・IPAを確認する</div>
 
-      <div class="subtitle">
-        意味・文法・構造・語彙・IPA・米語の読み上げ
-      </div>
+    <h2>最新の英文</h2>
+    <div class="sub">出典：NPR Life Kit</div>
 
-      <textarea id="englishText"
-        aria-label="英文を入力">I didn't see that coming.</textarea>
+    <button id="newsButton" onclick="loadNews(true)">
+      最新の英文を取得
+    </button>
 
-      <button id="analyzeButton" onclick="analyzeEnglish()">
-        📘 英文を解析
-      </button>
+    <div id="newsStatus">ボタンを押すと英文を取得します。</div>
+    <div id="newsList"></div>
 
-      <button id="speakButton" onclick="speakEnglish()">
-        🔊 米語で聞く
-      </button>
+    <button id="moreButton" onclick="loadNews(false)">
+      もっと見る（10件追加）
+    </button>
+  </section>
 
-      <div id="status">英文を入力してください。</div>
-    </section>
+  <section class="card" id="editorCard">
+    <h2>英文を読む・解析する</h2>
 
-    <section id="analysisResult" class="card">
-      <h2>英文のしくみ</h2>
-      <div id="analysisContent"></div>
-    </section>
+    <textarea id="englishText"
+      aria-label="英文を入力">I didn't see that coming.</textarea>
 
-  </main>
+    <button id="analyzeButton" onclick="analyzeEnglish()">
+      📘 英文を解析
+    </button>
+
+    <button id="speakButton" onclick="speakEnglish()">
+      🔊 米語で聞く
+    </button>
+
+    <div id="status">英文を入力するか、上の一覧から選択してください。</div>
+    <div id="selectedSource"></div>
+  </section>
+
+  <section id="analysisResult" class="card">
+    <h2>英文のしくみ</h2>
+    <div id="analysisContent"></div>
+  </section>
+</main>
 
 <script>
-  const APPS_SCRIPT_URL =
-    'https://script.google.com/macros/s/AKfycbwwwNsySQEF2s4LW8ow5QEEsDXC2tJXNLk8jEDWaVS1JC9pYqYdzF29QjuxdXeJFRmkjQ/exec';
+const APPS_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbwwwNsySQEF2s4LW8ow5QEEsDXC2tJXNLk8jEDWaVS1JC9pYqYdzF29QjuxdXeJFRmkjQ/exec';
 
-  const englishText = document.getElementById('englishText');
-  const analyzeButton = document.getElementById('analyzeButton');
-  const analysisResult = document.getElementById('analysisResult');
-  const analysisContent = document.getElementById('analysisContent');
+const editor = document.getElementById('englishText');
+const statusBox = document.getElementById('status');
+const newsStatus = document.getElementById('newsStatus');
+const newsList = document.getElementById('newsList');
+const moreButton = document.getElementById('moreButton');
+const newsButton = document.getElementById('newsButton');
+const analyzeButton = document.getElementById('analyzeButton');
+const analysisResult = document.getElementById('analysisResult');
+const analysisContent = document.getElementById('analysisContent');
 
-  englishText.addEventListener('input', function () {
-    analysisResult.style.display = 'none';
-    setStatus('英文を変更しました。解析を押してください。');
-  });
+let newsOffset = 0;
+let newsLoading = false;
+let hasMore = false;
+let loadedNews = [];
 
-  async function analyzeEnglish() {
-    const text = englishText.value.trim();
+editor.addEventListener('input', () => {
+  analysisResult.style.display = 'none';
+  document.getElementById('selectedSource').replaceChildren();
+  statusBox.textContent = '英文を変更しました。';
+});
 
-    if (!text) {
-      setStatus('英文を入力してください。');
-      return;
-    }
+async function loadNews(reset) {
+  if (newsLoading) return;
+  newsLoading = true;
 
-    analyzeButton.disabled = true;
-    analysisResult.style.display = 'none';
-    setStatus('英文を解析しています…');
-
-    try {
-      const data = await getJsonp('analyzeEnglish', { text });
-
-      if (!data || data.success === false || data.error) {
-        throw new Error(
-          data && data.error
-            ? data.error
-            : '解析結果を取得できませんでした。'
-        );
-      }
-
-      renderAnalysis(data);
-      setStatus('解析完了。');
-
-    } catch (error) {
-      setStatus('解析エラー：' + error.message);
-
-    } finally {
-      analyzeButton.disabled = false;
-    }
+  if (reset) {
+    newsOffset = 0;
+    loadedNews = [];
+    newsList.replaceChildren();
   }
 
-  function renderAnalysis(data) {
+  newsButton.disabled = true;
+  moreButton.disabled = true;
+  newsStatus.textContent = '英文を取得しています…';
+
+  try {
+    const data = await getJsonp('getNews', {
+      offset: newsOffset,
+      limit: reset ? 5 : 10
+    });
+
+    if (!data || data.success === false || !Array.isArray(data.items)) {
+      throw new Error(data?.error || '取得結果が不正です。');
+    }
+
+    data.items.forEach(item => {
+      loadedNews.push(item);
+      addNewsItem(item);
+    });
+
+    newsOffset = data.nextOffset;
+    hasMore = Boolean(data.hasMore);
+    moreButton.style.display = hasMore ? 'block' : 'none';
+
+    newsStatus.textContent = loadedNews.length
+      ? loadedNews.length + '件を表示中' +
+        (hasMore ? '（続きを取得できます）' : '（取得できる分を表示しました）')
+      : '表示できる英文がありません。';
+
+  } catch (error) {
+    newsStatus.textContent = '取得エラー：' + error.message;
+  } finally {
+    newsLoading = false;
+    newsButton.disabled = false;
+    moreButton.disabled = false;
+  }
+}
+
+function addNewsItem(item) {
+  const card = document.createElement('div');
+  card.className = 'newsItem';
+
+  const title = document.createElement('div');
+  title.className = 'newsTitle';
+  title.textContent = item.title || '';
+
+  const description = document.createElement('div');
+  description.className = 'description';
+  description.textContent = item.description || '';
+
+  const source = document.createElement('div');
+  source.className = 'source';
+  source.textContent = (item.source || 'NPR Life Kit') +
+    (item.date ? ' / ' + item.date : '');
+
+  const link = document.createElement('a');
+  link.textContent = '元の記事を開く';
+  link.href = item.url || '#';
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+
+  const choose = document.createElement('button');
+  choose.className = 'chooseButton';
+  choose.textContent = 'この英文を読む・解析する';
+
+  choose.onclick = () => {
+    editor.value = (item.title || '').trim();
+    analysisResult.style.display = 'none';
+
+    const sourceBox = document.getElementById('selectedSource');
+    sourceBox.replaceChildren();
+
+    const sourceLink = document.createElement('a');
+    sourceLink.textContent = '出典：NPR Life Kit';
+    sourceLink.href = item.url || '#';
+    sourceLink.target = '_blank';
+    sourceLink.rel = 'noopener noreferrer';
+    sourceBox.appendChild(sourceLink);
+
+    statusBox.textContent = '英文を選択しました。';
+    document.getElementById('editorCard')
+      .scrollIntoView({behavior: 'smooth', block: 'start'});
+  };
+
+  card.append(title, description, source, link, choose);
+  newsList.appendChild(card);
+}
+
+async function analyzeEnglish() {
+  const text = editor.value.trim();
+
+  if (!text) {
+    statusBox.textContent = '英文を入力してください。';
+    return;
+  }
+
+  analyzeButton.disabled = true;
+  statusBox.textContent = '英文を解析しています…';
+  analysisResult.style.display = 'none';
+
+  try {
+    const data = await getJsonp('analyzeEnglish', {text});
+
+    if (!data || data.success === false || data.error) {
+      throw new Error(data?.error || '解析結果を取得できませんでした。');
+    }
+
     analysisContent.replaceChildren();
 
-    const entries = Object.entries(data).filter(
-      ([key]) => key !== 'success'
-    );
-
-    entries.forEach(([key, value]) => {
-      if (value === null || value === undefined || value === '') {
-        return;
-      }
+    Object.entries(data).forEach(([key, value]) => {
+      if (key === 'success' || value === null ||
+          value === undefined || value === '') return;
 
       const section = document.createElement('div');
       section.className = 'section';
 
       const label = document.createElement('div');
       label.className = 'label';
-      label.textContent = getJapaneseLabel(key);
+      label.textContent = labelOf(key);
 
       const body = document.createElement('div');
       body.className = 'value';
@@ -223,190 +298,161 @@
       analysisContent.appendChild(section);
     });
 
-    if (!analysisContent.children.length) {
-      analysisContent.textContent = '解析内容がありません。';
-    }
-
     analysisResult.style.display = 'block';
+    statusBox.textContent = '解析完了。';
+
+  } catch (error) {
+    statusBox.textContent = '解析エラー：' + error.message;
+  } finally {
+    analyzeButton.disabled = false;
   }
+}
 
-  function renderValue(parent, value) {
-    if (value === null || value === undefined) {
+function renderValue(parent, value) {
+  if (value === null || value === undefined) return;
+
+  if (Array.isArray(value)) {
+    if (!value.length) {
+      parent.textContent = '該当なし';
       return;
     }
 
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        parent.textContent = '該当なし';
-        return;
-      }
-
-      value.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'item';
-        renderValue(div, item);
-        parent.appendChild(div);
-      });
-
-      return;
-    }
-
-    if (typeof value === 'object') {
-      Object.entries(value).forEach(([key, child]) => {
-        if (child === null || child === undefined || child === '') {
-          return;
-        }
-
-        const div = document.createElement('div');
-        div.className = 'field';
-
-        const strong = document.createElement('strong');
-        strong.textContent = getJapaneseLabel(key) + '：';
-
-        div.appendChild(strong);
-        renderValue(div, child);
-        parent.appendChild(div);
-      });
-
-      return;
-    }
-
-    parent.appendChild(
-      document.createTextNode(String(value))
-    );
-  }
-
-  function getJapaneseLabel(key) {
-    const labels = {
-      natural_translation_ja: '自然な日本語訳',
-      translation_ja: '自然な日本語訳',
-      sentence_pattern: '文型',
-      svocm: 'S / V / O / C / M',
-      sentence_structure: '文の構造',
-      structure: '文の構造',
-      grammar_explanation_ja: '文法解説',
-      grammar: '文法',
-      words: '単語・語彙',
-      vocabulary: '単語・語彙',
-      phrases: '句・イディオム',
-      idioms: '句・イディオム',
-      modern_american_usage: '現代アメリカ英語',
-      modern_usage: '現代米語の使い方',
-      british_note: '英国英語との差',
-      advanced_note: '上級解説',
-      word: '単語',
-      meaning_ja: '意味',
-      meaning: '意味',
-      part_of_speech: '品詞',
-      pos: '品詞',
-      role: '文中での役割',
-      ipa: '米語IPA',
-      syllables: 'シラブル',
-      stress: '強勢',
-      phrase: '表現',
-      explanation: '解説',
-      example: '例文',
-      source: '出典',
-      S: '主語 S',
-      V: '動詞 V',
-      O: '目的語 O',
-      C: '補語 C',
-      M: '修飾語 M'
-    };
-
-    return labels[key] || key.replace(/_/g, ' ');
-  }
-
-  function speakEnglish() {
-    const text = englishText.value.trim();
-
-    if (!text) {
-      setStatus('英文を入力してください。');
-      return;
-    }
-
-    if (!('speechSynthesis' in window)) {
-      setStatus('このブラウザでは音声再生を利用できません。');
-      return;
-    }
-
-    speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 1.0;
-
-    const voices = speechSynthesis.getVoices();
-
-    const americanVoice = voices.find(
-      voice => voice.lang.toLowerCase() === 'en-us'
-    );
-
-    if (americanVoice) {
-      utterance.voice = americanVoice;
-    }
-
-    utterance.onerror = () => {
-      setStatus('音声を再生できませんでした。');
-    };
-
-    speechSynthesis.speak(utterance);
-  }
-
-  function getJsonp(action, params = {}) {
-    return new Promise((resolve, reject) => {
-      const callbackName =
-        'englishViewerCallback_' +
-        Date.now() + '_' +
-        Math.floor(Math.random() * 100000);
-
-      const script = document.createElement('script');
-      let finished = false;
-
-      const timer = setTimeout(() => {
-        finish(new Error('接続がタイムアウトしました。'));
-      }, 60000);
-
-      function finish(error, data) {
-        if (finished) return;
-        finished = true;
-
-        clearTimeout(timer);
-        script.remove();
-
-        try {
-          delete window[callbackName];
-        } catch (e) {
-          window[callbackName] = undefined;
-        }
-
-        if (error) {
-          reject(error);
-        } else {
-          resolve(data);
-        }
-      }
-
-      window[callbackName] = data => finish(null, data);
-
-      script.onerror = () => {
-        finish(new Error('Apps Scriptに接続できませんでした。'));
-      };
-
-      const query = new URLSearchParams({
-        action,
-        callback: callbackName,
-        ...params
-      });
-
-      script.src = APPS_SCRIPT_URL + '?' + query.toString();
-      document.body.appendChild(script);
+    value.forEach(element => {
+      const item = document.createElement('div');
+      item.className = 'item';
+      renderValue(item, element);
+      parent.appendChild(item);
     });
+    return;
   }
 
-  function setStatus(message) {
-    document.getElementById('status').textContent = message;
+  if (typeof value === 'object') {
+    Object.entries(value).forEach(([key, child]) => {
+      if (child === undefined || child === null || child === '') return;
+
+      const line = document.createElement('div');
+      line.className = 'field';
+
+      const label = document.createElement('strong');
+      label.textContent = labelOf(key) + '：';
+
+      line.appendChild(label);
+      renderValue(line, child);
+      parent.appendChild(line);
+    });
+    return;
   }
+
+  parent.appendChild(document.createTextNode(String(value)));
+}
+
+function labelOf(key) {
+  const labels = {
+    natural_translation_ja: '自然な日本語訳',
+    translation_ja: '自然な日本語訳',
+    sentence_pattern: '文型',
+    svocm: 'S / V / O / C / M',
+    sentence_structure: '文の構造',
+    grammar_explanation_ja: '文法解説',
+    words: '単語・語彙',
+    phrases: '句・イディオム',
+    modern_american_usage: '現代アメリカ英語',
+    british_note: '英国英語との差',
+    advanced_note: '上級解説',
+    word: '単語',
+    meaning_ja: '意味',
+    part_of_speech: '品詞',
+    role: '文中での役割',
+    ipa: '米語IPA',
+    syllables: 'シラブル',
+    stress: '強勢',
+    phrase: '表現',
+    explanation: '解説',
+    S: '主語 S',
+    V: '動詞 V',
+    O: '目的語 O',
+    C: '補語 C',
+    M: '修飾語 M'
+  };
+  return labels[key] || key.replace(/_/g, ' ');
+}
+
+function speakEnglish() {
+  const text = editor.value.trim();
+  if (!text) {
+    statusBox.textContent = '英文を入力してください。';
+    return;
+  }
+  if (!('speechSynthesis' in window)) {
+    statusBox.textContent = 'このブラウザは読み上げに対応していません。';
+    return;
+  }
+
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  utterance.rate = 1.0;
+
+  const voice = speechSynthesis.getVoices().find(
+    v => v.lang.toLowerCase() === 'en-us'
+  );
+  if (voice) utterance.voice = voice;
+
+  utterance.onerror = () => {
+    statusBox.textContent = '読み上げに失敗しました。';
+  };
+
+  speechSynthesis.speak(utterance);
+}
+
+function getJsonp(action, params = {}) {
+  return new Promise((resolve, reject) => {
+    const callback =
+      'evCallback_' + Date.now() + '_' +
+      Math.floor(Math.random() * 100000);
+
+    const script = document.createElement('script');
+    let finished = false;
+
+    const timer = setTimeout(() => {
+      finish(new Error('接続がタイムアウトしました。'));
+    }, 60000);
+
+    function finish(error, data) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      script.remove();
+
+      try {
+        delete window[callback];
+      } catch (e) {
+        window[callback] = undefined;
+      }
+
+      if (error) reject(error);
+      else resolve(data);
+    }
+
+    window[callback] = data => finish(null, data);
+    script.onerror = () =>
+      finish(new Error('Apps Scriptに接続できませんでした。'));
+
+    const query = new URLSearchParams({
+      action,
+      callback,
+      ...params
+    });
+
+    script.src = APPS_SCRIPT_URL + '?' + query.toString();
+    document.body.appendChild(script);
+  });
+}
+
+function setStatus(text) {
+  statusBox.textContent = text;
+}
 </script>
 </body>
 </html>
