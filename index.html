@@ -289,11 +289,9 @@ if (sentences.length > 1) {
   };
 
   panel.appendChild(allButton);
-  editor.before(panel);
+    editor.before(panel);
 }
 
-  .trim()
-  .replace(/([.!?])\s+(?=[A-Z])/g, '$1\n');
     analysisResult.style.display = 'none';
 
     const sourceBox = document.getElementById('selectedSource');
