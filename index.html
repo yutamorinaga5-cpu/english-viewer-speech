@@ -236,7 +236,9 @@ function addNewsItem(item) {
   choose.textContent = 'この英文を読む・解析する';
 
   choose.onclick = () => {
-    editor.value = (item.description || item.title || '').trim();
+    editor.value = (item.description || item.title || '')
+  .trim()
+  .replace(/([.!?])\s+(?=[A-Z])/g, '$1\n');
     analysisResult.style.display = 'none';
 
     const sourceBox = document.getElementById('selectedSource');
