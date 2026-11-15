@@ -236,9 +236,62 @@ function addNewsItem(item) {
   choose.textContent = 'この英文を読む・解析する';
 
   choose.onclick = () => {
-    editor.value = (item.description || item.title || '')
+    
+editor.value = (item.description || item.title || '')
   .trim()
   .replace(/([.!?])\s+(?=[A-Z])/g, '$1\n');
+
+const oldPanel = document.getElementById('sentencePicker');
+if (oldPanel) oldPanel.remove();
+
+const sentences = editor.value
+  .split(/\n+/)
+  .map(s => s.trim())
+  .filter(Boolean);
+
+if (sentences.length > 1) {
+  const panel = document.createElement('div');
+  panel.id = 'sentencePicker';
+  panel.style.marginBottom = '12px';
+
+  const heading = document.createElement('div');
+  heading.textContent = '解析したい英文を1つ選択';
+  heading.style.fontWeight = 'bold';
+  heading.style.marginBottom = '8px';
+  panel.appendChild(heading);
+
+  sentences.forEach((sentence, index) => {
+    const button = document.createElement('button');
+    button.textContent = (index + 1) + '. ' + sentence;
+    button.style.background = '#f1f3f4';
+    button.style.textAlign = 'left';
+    button.style.fontWeight = 'normal';
+    button.style.height = 'auto';
+    button.style.padding = '12px';
+
+    button.onclick = () => {
+      editor.value = sentence;
+      analysisResult.style.display = 'none';
+      statusBox.textContent = '1文を選択しました。';
+    };
+
+    panel.appendChild(button);
+  });
+
+  const allButton = document.createElement('button');
+  allButton.textContent = '全文を選択';
+  allButton.style.background = '#e8f0fe';
+
+  allButton.onclick = () => {
+    editor.value = sentences.join('\n');
+    analysisResult.style.display = 'none';
+    statusBox.textContent = '全文を選択しました。';
+  };
+
+  panel.appendChild(allButton);
+  editor.before(panel);
+}
+
   .trim()
   .replace(/([.!?])\s+(?=[A-Z])/g, '$1\n');
     analysisResult.style.display = 'none';
