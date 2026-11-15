@@ -136,6 +136,10 @@
     <textarea id="englishText"
       aria-label="英文を入力">I didn't see that coming.</textarea>
 
+    <button type="button" onclick="pasteEnglish()">
+      📋 コピーした英文を取り込む
+    </button>
+
     <button id="analyzeButton" onclick="analyzeEnglish()">
       📘 英文を解析
     </button>
@@ -329,6 +333,25 @@ if (sentences.length > 1) {
 
   card.append(title, description, source, link, choose);
   newsList.appendChild(card);
+}
+
+async function pasteEnglish() {
+  try {
+    const text = (await navigator.clipboard.readText()).trim();
+
+    if (!text) {
+      statusBox.textContent = 'クリップボードに英文がありません。';
+      return;
+    }
+
+    editor.value = text;
+    statusBox.textContent = 'コピーした英文を取り込みました。';
+    analysisResult.style.display = 'none';
+    editor.focus();
+  } catch (error) {
+    statusBox.textContent =
+      '取り込めませんでした。入力欄にCtrl + Vで貼り付けてください。';
+  }
 }
 
 async function analyzeEnglish() {
